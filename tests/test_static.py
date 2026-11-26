@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import ast
+import html
+import re
 from pathlib import Path
 
 from telethon import TelegramClient
@@ -169,13 +171,41 @@ def test_no_dynamic_attribute_access():
         assert "__import__" not in source and "importlib" not in source
 
 
+def site_files() -> list[Path]:
+    files = sorted(p for p in (REPO / "site").glob("*") if p.suffix in {".html", ".js", ".css"})
+    assert REPO / "site" / "index.html" in files, "the website was not found"
+    return files
+
+
 def test_no_dashes_in_human_texts():
     targets = list(source_files().values())
     targets += [p for p in [REPO / "README.md"] if p.is_file()]
     assert len(targets) > 12, "the README was not found"
+    targets += site_files() + sorted((REPO / "docs").glob("*.md"))
     for path in targets:
         text = path.read_text(encoding="utf-8")
         assert "—" not in text and "–" not in text, path
+
+
+# What a newcomer pastes. The site and the README must give the same commands.
+INSTALL_COMMANDS = {
+    'powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"',
+    "curl -LsSf https://astral.sh/uv/install.sh | sh",
+    "uv tool install https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip",
+    "uv tool upgrade tgsweep",
+}
+
+
+def test_site_and_readme_install_the_same_way():
+    readme = (REPO / "README.md").read_text(encoding="utf-8")
+    page = (REPO / "site" / "index.html").read_text(encoding="utf-8")
+    commands = {html.unescape(re.sub(r"<[^>]+>", "", c)) for c in re.findall(r"<code>(.*?)</code>", page)}
+    for command in INSTALL_COMMANDS:
+        assert command in readme, command
+        assert command in commands, command
+    installs = {c for c in commands if c.startswith("uv tool install")}
+    assert installs == {"uv tool install https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip"}
+    assert "git+" not in readme and "git+" not in page
 
 
 def test_banned_names_not_even_referenced():

@@ -2,6 +2,8 @@
 
 Удаляет ваши сообщения, комментарии к постам и реакции в группах Telegram, которые вы сами отметите. Работает на вашем компьютере: macOS, Windows или Linux. Сервер и бот не нужны.
 
+Пошаговая инструкция со скриншотами для Windows и Mac: https://tgsweep.atworks.dev
+
 Что tgsweep не делает никогда:
 
 - не открывает личные чаты, ботов, «Избранное» и служебный чат Telegram;
@@ -28,10 +30,10 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 Закройте и снова откройте терминал, затем поставьте tgsweep:
 
 ```sh
-uv tool install git+https://github.com/umbrella-at/tgsweep
+uv tool install https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip
 ```
 
-Обновление: `uv tool upgrade tgsweep`.
+Git для этого не нужен. Обновление: `uv tool upgrade tgsweep`.
 
 ## api_id и api_hash
 
