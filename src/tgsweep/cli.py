@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import logging
 import platform
 import sys
 from typing import Callable
@@ -158,6 +159,16 @@ def enable_ansi() -> None:
         kernel32.SetConsoleMode(handle, mode.value | 0x0004)  # ENABLE_VIRTUAL_TERMINAL_PROCESSING
 
 
+def quiet_library_logs(ui) -> None:
+    """Telethon warns about reconnects on its own logger; without this they would cut into the status line."""
+    from .ui import SayHandler
+
+    lib = logging.getLogger("telethon")
+    lib.handlers[:] = [SayHandler(ui)]
+    lib.setLevel(logging.WARNING)
+    lib.propagate = False
+
+
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="tgsweep",
@@ -179,8 +190,10 @@ def main(argv: list[str] | None = None) -> int:
     from .ui import TerminalUI
 
     home = Home(default_root())
+    ui = TerminalUI()
+    quiet_library_logs(ui)
     try:
-        return asyncio.run(run(args, home, TerminalUI()))
+        return asyncio.run(run(args, home, ui))
     except (KeyboardInterrupt, EOFError):
         print("\nПрервано.", file=sys.stderr)
         return 130

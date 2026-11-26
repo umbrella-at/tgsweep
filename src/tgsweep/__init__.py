@@ -1,3 +1,3 @@
 """tgsweep: delete your own Telegram messages from the chats you pick."""
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"

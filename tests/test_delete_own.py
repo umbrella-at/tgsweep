@@ -154,3 +154,41 @@ async def test_missing_ids_are_reported(sleeper):
     report = await delete_own(client, group, [msg.id, 999], me_id=ME, journal=Journal(None), sleep=sleeper)
     assert report.deleted == [msg.id]
     assert report.missing == [999]
+
+
+async def test_flood_waits_and_pauses_sleep_apart(sleeper):
+    client = FakeClient()
+    group = client.add_channel(500, "Big group")
+    mine = [client.add_message(group, ME, "m").id for _ in range(150)]
+    client.flood_once["get_messages"] = 10
+    waits: list[float] = []
+
+    async def wait(seconds):
+        waits.append(seconds)
+
+    handled: list[int] = []
+    report = await delete_own(
+        client, group, mine, me_id=ME, journal=Journal(None), sleep=sleeper, pause=4.0, wait=wait,
+        progress=handled.append,
+    )
+    assert waits == [11] and sleeper.calls == [4.0]
+    assert handled == [100, 50] and len(report.deleted) == 150
+
+
+async def test_progress_counts_a_chat_that_went_out_of_reach(sleeper):
+    client = FakeClient()
+    group = client.add_channel(500, "Gone group")
+    mine = [client.add_message(group, ME, "m").id for _ in range(150)]
+    real = client.get_messages
+    calls = []
+
+    async def gone_after_first(*a, **kw):
+        calls.append(1)
+        if len(calls) > 1:
+            raise errors.ChannelPrivateError(request=None)
+        return await real(*a, **kw)
+
+    client.get_messages = gone_after_first
+    handled: list[int] = []
+    report = await delete_own(client, group, mine, me_id=ME, journal=Journal(None), sleep=sleeper, progress=handled.append)
+    assert handled == [100, 50] and len(report.failed) == 50

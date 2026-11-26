@@ -7,7 +7,6 @@ Nothing is deleted before the typed confirmation, and only in the chats the user
 from __future__ import annotations
 
 import asyncio
-import dataclasses
 import math
 import signal
 import threading
@@ -16,7 +15,7 @@ from datetime import datetime, timezone
 from typing import Callable, Iterator, Protocol
 
 from . import cleanup
-from .cleanup import ApplyReport, Plan, Policy, Target
+from .cleanup import ApplyProgress, ApplyReport, Plan, Policy, ScanProgress, Target
 from .home import Home
 from .journal import Journal
 from .net import Sleep
@@ -46,6 +45,9 @@ class UI(Protocol):
     def ask(self, prompt: str) -> str: ...
 
     def ask_secret(self, prompt: str) -> str: ...
+
+    def progress(self, text: str | None) -> None:
+        """A status line that keeps replacing itself while the search or the deletion runs; None removes it."""
 
     async def choose(self, question: str, choices: list[tuple[str, int]]) -> int | None:
         """The value of the chosen item, None when the user backs out."""
@@ -90,9 +92,47 @@ def row(t: Target) -> str:
     return f"{title}: {counts(*target_counts(t))}"
 
 
+def duration(seconds: float) -> str:
+    seconds = max(0, round(seconds))
+    if seconds < 60:
+        return f"{seconds} с"
+    minutes = round(seconds / 60)
+    if minutes < 60:
+        return f"{minutes} мин"
+    hours, rest = divmod(minutes, 60)
+    return f"{hours} ч {rest} мин" if rest else f"{hours} ч"
+
+
+def scan_line(p: ScanProgress) -> str:
+    """What the search is doing, in one line. The chat title goes last: a narrow screen cuts it, not the numbers."""
+    if p.phase == "dialogs":
+        return f"Получаю список чатов: {p.read}"
+    if p.phase == "waiting":
+        doing = f"Telegram попросил подождать {duration(p.wait_s)}, жду"
+    elif p.phase == "reactions":
+        doing = f"ищу ваши реакции, просмотрено {p.read}"
+    else:
+        doing = f"ищу ваши сообщения, найдено всего {p.found}"
+    return f"Чат {p.chat} из {p.chats} · {doing} · {p.title}"
+
+
+def apply_line(p: ApplyProgress) -> str:
+    """What the deletion is doing, in one line, the chat title last."""
+    percent = p.done * 100 // p.total if p.total else 100
+    line = f"Удаляю: {p.done} из {p.total} ({percent}%)"
+    if p.wait_s:
+        line += f" · Telegram попросил подождать {duration(p.wait_s)}, жду"
+    if p.chat:
+        line += f" · {p.chat}"
+    return line
+
+
 def estimate_minutes(targets: list[Target], pause_s: float, chunk: int = cleanup.DELETE_CHUNK) -> int:
     requests = sum(math.ceil(len(t.message_ids) / chunk) + len(t.reaction_ids) for t in targets)
     return max(1, math.ceil(requests * pause_s / 60))
+
+
+STOP_NOTE = "Останавливаюсь после текущего запроса. Нажмите Ctrl+C ещё раз, чтобы прервать сразу."
 
 
 class Stopper:
@@ -100,6 +140,7 @@ class Stopper:
 
     def __init__(self) -> None:
         self.requested = False
+        self._note: asyncio.Handle | None = None
 
     def __call__(self) -> bool:
         return self.requested
@@ -115,13 +156,22 @@ class Stopper:
             if self.requested:
                 raise KeyboardInterrupt
             self.requested = True
-            say("\nОстанавливаюсь после текущего запроса. Нажмите Ctrl+C ещё раз, чтобы прервать сразу.")
+            # The handler may interrupt a write to the terminal (the status line redraws all the time),
+            # and writing from inside it would then fail as a reentrant call: say it from the loop instead.
+            try:
+                self._note = asyncio.get_running_loop().call_soon_threadsafe(say, STOP_NOTE)
+            except RuntimeError:
+                say(STOP_NOTE)
 
         signal.signal(signal.SIGINT, handler)
         try:
             yield
         finally:
             signal.signal(signal.SIGINT, previous)
+            # Deletion is over: a note still waiting would land inside the next question.
+            if self._note is not None:
+                self._note.cancel()
+                self._note = None
 
 
 def _utcnow() -> datetime:
@@ -154,16 +204,16 @@ async def sweep(
 
     ui.say("Ищу ваши сообщения в группах и комментарии к постам. В больших чатах это может занять несколько минут.")
     reaction_state = home.load_state()
-
-    def on_chat(done: int, total: int, title: str) -> None:
-        ui.say(f"  {done + 1}/{total}: {title}")
-
-    plan = await cleanup.build_plan(
-        client, me.id, policy, retention_days=retention, now=now(), reaction_state=reaction_state,
-        sleep=sleep, on_chat=on_chat,
-    )
-    _keep_empty_scans(plan, reaction_state)
+    try:
+        plan = await cleanup.build_plan(
+            client, me.id, policy, retention_days=retention, now=now(), reaction_state=reaction_state,
+            sleep=sleep, progress=lambda p: ui.progress(scan_line(p)),
+        )
+    finally:
+        ui.progress(None)
+    cleanup.keep_empty_scans(plan, reaction_state)
     home.save_state(reaction_state)
+    ui.say(f"Поиск занял {duration(plan.stats.seconds)}, просмотрено {plural(plan.stats.chats, 'чат', 'чата', 'чатов')}.")
     _say_skipped(ui, plan)
 
     found = [t for t in plan.targets if t.message_ids or t.reaction_ids]
@@ -194,68 +244,17 @@ async def sweep(
         return 0
 
     journal = Journal(home.journal_file)
-    reports = await _delete_in_batches(client, plan, chosen, policy, me.id, journal, reaction_state, home, sleep, stopper, ui)
-    _say_report(ui, reports, home)
-    return 0
-
-
-async def _delete_in_batches(
-    client, plan: Plan, chosen: list[Target], policy: Policy, me_id: int, journal: Journal,
-    reaction_state: dict[str, int], home: Home, sleep: Sleep, stopper: Stopper, ui: UI,
-) -> list[ApplyReport]:
-    """The typed count covers everything ticked; the per-run limits only cut it into batches.
-
-    apply_plan moves a chat's reaction scan position when its batch removed every reaction. A later
-    batch of the same chat would then move it past a reaction that failed earlier, so a chat with a
-    failure goes back to the position this run started from, and the next run finds that reaction again.
-    """
-    remaining = [dataclasses.replace(t, message_ids=list(t.message_ids), reaction_ids=list(t.reaction_ids)) for t in chosen]
-    total = sum(sum(target_counts(t)) for t in remaining)
-    started_at = {str(t.chat_id): reaction_state.get(str(t.chat_id)) for t in chosen}
-    failed: set[str] = set()
-    done = 0
-    reports: list[ApplyReport] = []
-
-    def keep_failed_findable() -> None:
-        for key in failed:
-            if started_at[key] is None:
-                reaction_state.pop(key, None)
-            else:
-                reaction_state[key] = started_at[key]
-        home.save_state(reaction_state)
-
     with stopper.armed(ui.say):
-        while remaining:
-            batch = cleanup.narrowed(plan, remaining, policy)
-            report = None
-            try:
-                report = await cleanup.apply_plan(
-                    client, batch, me_id=me_id, journal=journal, reaction_state=reaction_state,
-                    sleep=sleep, pause=policy.pause_s, should_stop=stopper,
-                )
-            finally:
-                if report is not None:
-                    failed.update(str(c.chat_id) for c in report.chats if c.unreact_failed)
-                keep_failed_findable()
-            reports.append(report)
-            sent_now = sum(sum(target_counts(t)) for t in batch.targets)
-            done += sent_now
-            if report.stopped or sent_now == 0:  # a zero limit would otherwise loop for ever
-                break
-            for rest, sent in zip(remaining, batch.targets):
-                rest.message_ids = rest.message_ids[len(sent.message_ids):]
-                rest.reaction_ids = rest.reaction_ids[len(sent.reaction_ids):]
-            remaining = [t for t in remaining if t.message_ids or t.reaction_ids]
-            if remaining:
-                ui.say(f"Обработано {done} из {total}, продолжаю.")
-    return reports
-
-
-def _keep_empty_scans(plan: Plan, reaction_state: dict[str, int]) -> None:
-    """A chat whose reaction scan found nothing keeps its position, so the next run starts from there."""
-    for t in plan.targets:
-        if t.reaction_scan_to and not t.reaction_ids:
-            reaction_state[str(t.chat_id)] = t.reaction_scan_to
+        try:
+            outcome = await cleanup.apply_in_batches(
+                client, plan, chosen, policy, me_id=me.id, journal=journal, reaction_state=reaction_state,
+                save_state=lambda: home.save_state(reaction_state), sleep=sleep, should_stop=stopper,
+                progress=lambda p: ui.progress(apply_line(p)),
+            )
+        finally:
+            ui.progress(None)
+    _say_report(ui, outcome.report, home)
+    return 0
 
 
 def _say_skipped(ui: UI, plan: Plan) -> None:
@@ -267,21 +266,19 @@ def _say_skipped(ui: UI, plan: Plan) -> None:
         ui.say("Не трогаю:\n" + "\n".join(lines))
 
 
-def _say_report(ui: UI, reports: list[ApplyReport], home: Home) -> None:
-    msgs = sum(r.messages for r in reports)
-    comments = sum(r.comments for r in reports)
-    reactions = sum(r.reactions for r in reports)
-    lines = [f"Готово. Удалено сообщений: {msgs}, комментариев: {comments}, снято реакций: {reactions}."]
-    missing = sum(r.missing for r in reports)
-    refused = sum(r.refused for r in reports)
-    failed = sum(r.failed for r in reports)
+def _say_report(ui: UI, report: ApplyReport, home: Home) -> None:
+    lines = [
+        f"Готово. Удалено сообщений: {report.messages}, комментариев: {report.comments}, "
+        f"снято реакций: {report.reactions}."
+    ]
+    missing, refused, failed = report.missing, report.refused, report.failed
     if missing:
         lines.append(f"Уже удалены раньше: {missing}.")
     if refused:
         lines.append(f"Не тронуты, потому что оказались не вашими: {refused}.")
     if failed:
         lines.append(f"Не удалось удалить: {failed}. Запустите tgsweep ещё раз позже.")
-    if any(r.stopped for r in reports):
+    if report.stopped:
         lines.append("Остановлено до конца. Оставшееся найдётся при следующем запуске.")
     lines.append(f"Журнал без текстов сообщений: {home.journal_file}")
     ui.say("\n".join(lines))

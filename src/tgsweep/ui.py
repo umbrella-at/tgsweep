@@ -6,22 +6,184 @@ the synchronous one would start a second loop and fail inside the running one.
 
 from __future__ import annotations
 
+import asyncio
 import getpass
-from typing import Any
+import logging
+import shutil
+import sys
+import time
+import unicodedata
+from typing import Any, Callable, TextIO
 
 import questionary
+from wcwidth import wcswidth, wcwidth
 
 CHOOSE_HINT = "(стрелки и Enter)"
 PICK_HINT = "(стрелки двигают, пробел отмечает, a отмечает все, Enter продолжает)"
+SPINNER = "|/-\\"  # plain ASCII: every console font has it
+REDRAW_S = 0.25
+# The terminal echoes ^C after the line; the next redraw wipes these extra columns too.
+ECHO_ROOM = 2
+
+
+def printable(text: str) -> str:
+    """Control characters become spaces and format characters (bidi marks) go, so one line stays one line."""
+    return "".join(
+        " " if unicodedata.category(ch) == "Cc" else ch
+        for ch in text
+        if ch == "\u200d" or unicodedata.category(ch) != "Cf"  # the joiner holds emoji sequences together
+    )
+
+
+def columns_of(text: str) -> int:
+    """Screen columns the text takes: emoji with a variation selector and joined emoji count as the terminal draws them."""
+    width = wcswidth(text)
+    return width if width >= 0 else len(text)
+
+
+def _units(text: str) -> list[str]:
+    """Characters with the marks, selectors and joined parts that follow them: a cut never splits an emoji."""
+    units: list[str] = []
+    for ch in text:
+        if units and (wcwidth(ch) == 0 or units[-1].endswith("\u200d")):
+            units[-1] += ch
+        else:
+            units.append(ch)
+    return units
+
+
+def fit(text: str, width: int) -> str:
+    """Cut the text to the screen width in columns, ending with an ellipsis when cut."""
+    if columns_of(text) <= width:
+        return text
+    out = ""
+    for unit in _units(text):
+        if columns_of(out + unit) + 1 > width:
+            break
+        out += unit
+    return out + "…"
+
+
+def clock_text(seconds: float) -> str:
+    seconds = int(seconds)
+    if seconds >= 3600:
+        return f"{seconds // 3600}:{seconds // 60 % 60:02d}:{seconds % 60:02d}"
+    return f"{seconds // 60}:{seconds % 60:02d}"
+
+
+class StatusLine:
+    """One line at the bottom that redraws itself with a spinner and a timer, so a long step never looks frozen.
+
+    It uses only carriage returns and spaces, no escape codes, so it works in any console. Lines
+    printed while it is shown go above it.
+    """
+
+    def __init__(
+        self,
+        out: TextIO | None = None,
+        *,
+        clock: Callable[[], float] = time.monotonic,
+        columns: Callable[[], int] = lambda: shutil.get_terminal_size((80, 24)).columns,
+        live: bool | None = None,
+    ) -> None:
+        self._out = out
+        self.clock = clock
+        self.columns = columns
+        self._live = live
+        self.text: str | None = None
+        self.started = 0.0
+        self.frame = 0
+        self.drawn = 0  # columns the last drawing took
+        self._task: asyncio.Task | None = None
+        self.broken = False  # the console refused a write: the line is off, the run goes on
+
+    @property
+    def out(self) -> TextIO:
+        return self._out or sys.stdout
+
+    @property
+    def live(self) -> bool:
+        if self._live is not None:
+            return self._live
+        isatty = getattr(self.out, "isatty", None)
+        return bool(isatty and isatty())
+
+    def show(self, text: str | None) -> None:
+        if text is None:
+            self.stop()
+            return
+        if self.broken or not self.live:
+            return
+        if self.text is None:
+            self.started = self.clock()
+            self.frame = 0
+            try:
+                self._task = asyncio.get_running_loop().create_task(self._spin())
+            except RuntimeError:  # no running loop: redraw only on updates
+                self._task = None
+        self.text = printable(text)
+        self.draw()
+
+    def line(self) -> str:
+        """The timer comes first: a narrow screen cuts the end of the line, never the part that moves."""
+        return f"{SPINNER[self.frame % len(SPINNER)]} {clock_text(self.clock() - self.started)} {self.text}"
+
+    def _write(self, data: str) -> None:
+        try:
+            self.out.write(data)
+            self.out.flush()
+        except (OSError, ValueError):  # a closed stream, or a console code page without these characters
+            self.broken = True
+            self.text = None
+            if self._task is not None:
+                self._task.cancel()
+                self._task = None
+
+    def draw(self) -> None:
+        if self.text is None or self.broken:
+            return
+        room = max(10, self.columns() - 1)
+        shown = fit(self.line(), max(10, room - ECHO_ROOM))
+        width = columns_of(shown)
+        # Written twice: the spaces wipe a longer previous line, the second copy leaves the cursor at its end.
+        pad = max(0, min(self.drawn + ECHO_ROOM, room) - width)
+        self._write("\r" + shown + " " * pad + "\r" + shown)
+        self.drawn = width
+
+    def clear(self) -> None:
+        if self.drawn and not self.broken:
+            self._write("\r" + " " * min(self.drawn + ECHO_ROOM, max(10, self.columns() - 1)) + "\r")
+        self.drawn = 0
+
+    def stop(self) -> None:
+        if self._task is not None:
+            self._task.cancel()
+            self._task = None
+        self.clear()
+        self.text = None
+
+    async def _spin(self) -> None:
+        while True:
+            await asyncio.sleep(REDRAW_S)
+            self.frame += 1
+            self.draw()
 
 
 class TerminalUI:
-    def __init__(self, **io: Any) -> None:
+    def __init__(self, *, status: StatusLine | None = None, **io: Any) -> None:
         """io: prompt_toolkit input= and output=, for tests."""
         self.io = io
+        self.status = status or StatusLine()
 
     def say(self, text: str) -> None:
-        print(text, flush=True)
+        """A line above the status line, which comes back right under it."""
+        self.status.clear()
+        self.status.out.write(text + "\n")
+        self.status.out.flush()
+        self.status.draw()
+
+    def progress(self, text: str | None) -> None:
+        self.status.show(text)
 
     def ask(self, prompt: str) -> str:
         return input(prompt)
@@ -58,3 +220,17 @@ class TerminalUI:
     async def yes_no(self, question: str, default: bool) -> bool:
         answer = await self._answer(questionary.confirm(question, default=default, **self.io))
         return default if answer is None else answer
+
+
+class SayHandler(logging.Handler):
+    """Library warnings (Telethon reconnecting) go through say, above the status line, not into its middle."""
+
+    def __init__(self, ui: TerminalUI) -> None:
+        super().__init__(logging.WARNING)
+        self.ui = ui
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            self.ui.say(f"Telegram: {record.getMessage()}")
+        except Exception:
+            self.handleError(record)

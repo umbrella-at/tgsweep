@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 import os
 import re
@@ -46,6 +47,7 @@ class ScriptedUI:
         self.rows: list[str] | None = None
         self.questions: list[str] = []
         self.secret_prompts: list[str] = []
+        self.status: list[str | None] = []
 
     @property
     def text(self) -> str:
@@ -53,6 +55,9 @@ class ScriptedUI:
 
     def say(self, text):
         self.lines.append(text)
+
+    def progress(self, text):
+        self.status.append(text)
 
     def ask(self, prompt):
         self.questions.append(prompt)
@@ -200,7 +205,22 @@ async def test_more_than_the_limit_goes_in_batches_until_done(laptop):
     await run_sweep(client, ui, laptop, policy=Policy(max_messages_per_run=4, include_reactions=False))
     assert not set(w["fresh"] + w["old"]) & set(client.ids_in(w["chat"]))
     assert [len(ids) for _, ids in client.delete_calls] == [4, 2]
-    assert "Обработано 4 из 6, продолжаю." in ui.text
+    assert "Удаляю: 4 из 6 (66%) · Chat with friends" in ui.status
+    assert "Удаляю: 6 из 6 (100%) · Chat with friends" in ui.status
+    assert ui.status[-1] is None  # the status line is gone before the report
+
+
+async def test_status_line_is_removed_when_the_deletion_fails(laptop):
+    client, w = world()
+
+    async def offline(*a, **kw):
+        raise ConnectionError("offline")
+
+    client.delete_messages = offline
+    ui = ScriptedUI(retention=0, pick=pick_titled("Chat with friends"))
+    with pytest.raises(ConnectionError):
+        await run_sweep(client, ui, laptop, policy=Policy(include_reactions=False))
+    assert ui.status[-1] is None and any(s and s.startswith("Удаляю: 0 из 6") for s in ui.status)
 
 
 async def test_stop_request_ends_between_batches(laptop):
@@ -222,10 +242,12 @@ async def test_stop_request_ends_between_batches(laptop):
     assert "Остановлено до конца" in ui.text
 
 
-async def test_zero_reaction_limit_does_not_loop(laptop, monkeypatch):
+async def test_zero_reaction_batch_leaves_reactions_out_of_the_count(laptop, monkeypatch):
+    """A reaction that would never be removed must not be in the number the user confirms."""
     client = FakeClient()
     chat = client.add_channel(100, "Chat")
     client.add_message(chat, 4000, "liked", date=FRESH, my_reaction=True)
+    client.add_message(chat, ME, "mine", date=FRESH)
     real, runs = app.cleanup.apply_plan, []
 
     async def counted(*a, **kw):
@@ -236,7 +258,8 @@ async def test_zero_reaction_limit_does_not_loop(laptop, monkeypatch):
     monkeypatch.setattr(app.cleanup, "apply_plan", counted)
     ui = ScriptedUI(retention=0)
     assert await run_sweep(client, ui, laptop, policy=Policy(max_reactions_per_run=0)) == 0
-    assert ui.rows == ["Chat: 1 реакция"]
+    assert ui.rows == ["Chat: 1 сообщение"]
+    assert "Чтобы подтвердить, введите число 1:" in ui.questions
     assert len(runs) == 1
 
 
@@ -252,11 +275,30 @@ async def test_reactions_are_removed_and_scan_position_saved(laptop):
     assert_mode(laptop.state_file, 0o600)
 
 
-async def test_build_plan_reports_progress(laptop):
+async def test_search_shows_a_status_line_for_every_step(laptop):
     client, w = world()
     ui = ScriptedUI(retention=0, pick=lambda rows: [])
     await run_sweep(client, ui, laptop)
-    assert "  1/2: Chat with friends" in ui.lines and "  2/2: Work chat" in ui.lines
+    assert "Получаю список чатов: 4" in ui.status
+    assert "Чат 1 из 2 · ищу ваши сообщения, найдено всего 6 · Chat with friends" in ui.status
+    assert "Чат 1 из 2 · ищу ваши реакции, просмотрено 7 · Chat with friends" in ui.status
+    assert "Чат 2 из 2 · ищу ваши сообщения, найдено всего 7 · Work chat" in ui.status
+    assert ui.status[-1] is None
+    assert "Поиск занял 0 с, просмотрено 2 чата." in ui.lines
+
+
+async def test_status_line_is_removed_when_the_search_fails(laptop):
+    client, w = world()
+
+    async def broken(*a, **kw):
+        raise ConnectionError("offline")
+        yield
+
+    client.iter_dialogs = broken
+    ui = ScriptedUI(retention=0)
+    with pytest.raises(ConnectionError):
+        await run_sweep(client, ui, laptop)
+    assert ui.status == ["Получаю список чатов: 0", None]
 
 
 # --- sign-in, sign-out and files --------------------------------------------
@@ -399,7 +441,7 @@ def test_version(capsys):
     with pytest.raises(SystemExit) as exc:
         cli.main(["--version"])
     assert exc.value.code == 0
-    assert capsys.readouterr().out.strip() == "tgsweep 0.1.0"
+    assert capsys.readouterr().out.strip() == "tgsweep 0.1.1"
 
 
 async def test_backing_out_of_the_number_deletes_nothing(laptop):
@@ -582,7 +624,7 @@ async def test_failed_reaction_is_found_again_after_a_later_batch(laptop):
     assert not bad._fake_my_reaction
 
 
-async def test_failed_reaction_goes_back_to_the_earlier_scan_position(laptop):
+async def test_failed_reaction_keeps_the_earlier_scan_position(laptop):
     client = FlakyReactions()
     chat = client.add_channel(100, "Chat")
     client.add_message(chat, 4000, "before", date=FRESH)
@@ -609,7 +651,11 @@ async def test_stopper_first_ctrl_c_asks_second_aborts():
             signal.raise_signal(signal.SIGINT)
         except KeyboardInterrupt:
             pytest.fail("the first Ctrl+C must only ask to stop")
-        assert stopper() is True and "Ctrl+C ещё раз" in said[0]
+        assert said == []  # not from inside the handler: it may have interrupted a write
+        await asyncio.sleep(0)
+        assert stopper() is True and said == [
+            "Останавливаюсь после текущего запроса. Нажмите Ctrl+C ещё раз, чтобы прервать сразу."
+        ]
         with pytest.raises(KeyboardInterrupt):
             signal.raise_signal(signal.SIGINT)
     assert signal.getsignal(signal.SIGINT) is not None and stopper.requested
@@ -741,3 +787,271 @@ def test_main_treats_ctrl_d_as_interrupt(monkeypatch, capsys, tmp_path):
     monkeypatch.setattr(cli, "run", eof)
     assert cli.main([]) == 130
 
+
+
+# --- the status line ---------------------------------------------------------
+
+
+class Screen:
+    def __init__(self):
+        self.written = ""
+
+    def write(self, text):
+        self.written += text
+
+    def flush(self):
+        pass
+
+    def isatty(self):
+        return True
+
+    @property
+    def visible(self) -> str:
+        """What a terminal would show on its last line after the carriage returns."""
+        line = ""
+        for part in self.written.split("\n")[-1].split("\r"):
+            line = part + line[len(part):]
+        return line.rstrip()
+
+
+def status_line(clock=None, columns=60, **kw):
+    from tgsweep.ui import StatusLine
+
+    now = clock or [0.0]
+    screen = Screen()
+    return screen, now, StatusLine(screen, clock=lambda: now[0], columns=lambda: columns, **kw)
+
+
+def test_status_line_shows_timer_then_text():
+    screen, now, line = status_line()
+    line.show("Получаю список чатов: 5")
+    assert screen.visible == "| 0:00 Получаю список чатов: 5"
+    now[0] = 75
+    line.show("Чат 1 из 2")
+    assert screen.visible == "| 1:15 Чат 1 из 2"  # the longer line before it is wiped
+
+
+def test_status_line_clears_when_done():
+    screen, now, line = status_line()
+    line.show("Ищу")
+    line.show(None)
+    assert screen.visible == "" and line.text is None
+
+
+def test_status_line_fits_the_screen_in_columns():
+    from wcwidth import wcswidth
+
+    from tgsweep.ui import fit
+
+    screen, now, line = status_line(columns=20)
+    line.show("Чат 😀😀😀😀😀😀 и ещё много текста")
+    assert line.drawn == wcswidth(screen.visible) <= 20 - 3
+    assert screen.visible.endswith("…")
+    assert fit("abc", 3) == "abc" and fit("abcd", 3) == "ab…"
+    assert fit("😀😀", 3) == "😀…"
+    # A heart with the emoji selector takes two columns, and a cut never splits it from the selector.
+    assert fit("\u2764\ufe0f\u2764\ufe0f\u2764\ufe0f", 4) == "\u2764\ufe0f…"
+
+
+def test_status_line_counts_emoji_selectors_as_the_terminal_draws_them():
+    screen, now, line = status_line(columns=80)
+    line.show("\u2764\ufe0f Мамочки \u2764\ufe0f")
+    assert line.drawn == len("| 0:00 ") + 2 + len(" Мамочки ") + 2
+
+
+def test_status_line_never_writes_past_a_narrowed_screen():
+    columns = [120]
+    screen, now, line = status_line(columns=0)
+    line.columns = lambda: columns[0]
+    line.show("x" * 110)
+    columns[0] = 40
+    line.show("short")
+    last = screen.written.split("\r")[-2]  # the text and the spaces that wipe the old line
+    assert len(last) <= 39
+    columns[0] = 120
+    line.show("x" * 110)
+    columns[0] = 40
+    line.show(None)  # cleared right after the screen narrowed
+    assert len(screen.written.split("\r")[-2]) <= 39
+
+
+def test_titles_cannot_break_the_line():
+    from tgsweep.ui import printable
+
+    assert printable("Group\nname\r\x07 \u202eevil") == "Group name   evil"
+    assert printable("\U0001F468\u200d\U0001F469") == "\U0001F468\u200d\U0001F469"  # joined emoji stay joined
+    screen, now, line = status_line()
+    line.show("Чат 1 из 2 · Group\nname")
+    assert "\n" not in screen.written and screen.visible == "| 0:00 Чат 1 из 2 · Group name"
+
+
+def test_hour_long_timer():
+    from tgsweep.ui import clock_text
+
+    assert (clock_text(59), clock_text(61), clock_text(3725)) == ("0:59", "1:01", "1:02:05")
+
+
+def test_lines_said_during_the_status_go_above_it():
+    from tgsweep.ui import TerminalUI
+
+    screen, now, line = status_line()
+    ui = TerminalUI(status=line)
+    ui.progress("Удаляю: 1 из 9 (11%)")
+    ui.say("Останавливаюсь")
+    lines = screen.written.split("\n")
+    assert lines[0].split("\r")[-1].strip() == "Останавливаюсь"
+    assert screen.visible == "| 0:00 Удаляю: 1 из 9 (11%)"
+
+
+class Pipe(Screen):
+    def isatty(self):
+        return False
+
+
+def test_no_status_line_when_output_is_not_a_terminal():
+    from tgsweep.ui import StatusLine
+
+    pipe = Pipe()
+    line = StatusLine(pipe)
+    line.show("Ищу")
+    assert pipe.written == "" and line._task is None
+
+
+class RefusingConsole(Screen):
+    """A console code page without the ellipsis: writing it fails."""
+
+    def write(self, text):
+        if "…" in text:
+            raise UnicodeEncodeError("cp866", text, 0, 1, "character maps to <undefined>")
+        super().write(text)
+
+
+def test_a_console_that_refuses_a_character_turns_the_line_off_and_the_run_goes_on():
+    from tgsweep.ui import StatusLine
+
+    console = RefusingConsole()
+    line = StatusLine(console, clock=lambda: 0.0, columns=lambda: 20, live=True)
+    line.show("short")
+    line.show("Удаляю: 1 из 9 (11%) · a long group title")
+    assert line.broken and line.text is None
+    line.show("more")
+    line.show(None)
+    assert console.visible == "| 0:00 short"
+
+
+async def test_status_line_spins_by_itself_and_stops(monkeypatch):
+    from tgsweep import ui as ui_mod
+
+    monkeypatch.setattr(ui_mod, "REDRAW_S", 0.001)
+    screen, now, line = status_line()
+    line.show("Ищу")
+    now[0] = 3
+    for _ in range(500):
+        if line.frame >= 2:
+            break
+        await asyncio.sleep(0.002)
+    assert line.frame >= 2 and screen.visible == f"{ui_mod.SPINNER[line.frame % 4]} 0:03 Ищу"
+    task = line._task
+    line.show(None)
+    await asyncio.sleep(0)
+    assert task.cancelled()
+    after = screen.written
+    await asyncio.sleep(0.01)
+    assert screen.written == after  # nothing redraws once it is gone
+
+
+def test_telethon_warnings_go_through_say():
+    import logging
+
+    from tgsweep.ui import TerminalUI
+
+    screen, now, line = status_line()
+    ui = TerminalUI(status=line)
+    lib = logging.getLogger("telethon")
+    saved = lib.handlers[:], lib.level, lib.propagate
+    try:
+        cli.quiet_library_logs(ui)
+        line.show("Удаляю: 1 из 9 (11%)")
+        logging.getLogger("telethon.network").warning("Attempt %d at connecting failed", 1)
+        logging.getLogger("telethon.network").info("chatter")
+    finally:
+        lib.handlers[:], lib.level, lib.propagate = saved
+    lines = screen.written.split("\n")
+    assert lines[0].split("\r")[-1].strip() == "Telegram: Attempt 1 at connecting failed"
+    assert len(lines) == 2 and screen.visible == "| 0:00 Удаляю: 1 из 9 (11%)"
+
+
+async def test_a_stop_note_left_after_the_deletion_is_dropped():
+    import signal
+
+    stopper, said = Stopper(), []
+    with stopper.armed(said.append):
+        signal.raise_signal(signal.SIGINT)
+    await asyncio.sleep(0)
+    assert stopper() is True and said == []
+
+
+def test_scan_lines():
+    from tgsweep.cleanup import ScanProgress
+
+    assert app.scan_line(ScanProgress("dialogs", read=12)) == "Получаю список чатов: 12"
+    assert app.scan_line(ScanProgress("messages", 3, 40, "Group", 2, 150)) == (
+        "Чат 3 из 40 · ищу ваши сообщения, найдено всего 150 · Group"
+    )
+    assert app.scan_line(ScanProgress("reactions", 3, 40, "Group", 5300, 150)) == (
+        "Чат 3 из 40 · ищу ваши реакции, просмотрено 5300 · Group"
+    )
+    assert app.scan_line(ScanProgress("waiting", 3, 40, "Group", wait_s=75)) == (
+        "Чат 3 из 40 · Telegram попросил подождать 1 мин, жду · Group"
+    )
+
+
+def test_a_long_title_on_a_narrow_screen_keeps_the_numbers_and_the_timer():
+    from tgsweep.cleanup import ApplyProgress, ScanProgress
+
+    screen, now, line = status_line(columns=80)
+    line.show(app.scan_line(ScanProgress("reactions", 12, 40, "Соседи ЖК Солнечный парк и окрестности", 5300, 150)))
+    assert screen.visible.startswith("| 0:00 Чат 12 из 40 · ищу ваши реакции, просмотрено 5300 · Соседи")
+    now[0] = 5
+    line.show(app.apply_line(ApplyProgress(1200, 15000, "Соседи ЖК Солнечный парк и окрестности", 300)))
+    assert screen.visible.startswith("| 0:05 Удаляю: 1200 из 15000 (8%) · Telegram попросил подождать 5 мин, жду")
+
+
+def test_apply_lines():
+    from tgsweep.cleanup import ApplyProgress
+
+    assert app.apply_line(ApplyProgress(0, 15000)) == "Удаляю: 0 из 15000 (0%)"
+    assert app.apply_line(ApplyProgress(1200, 15000, "Group")) == "Удаляю: 1200 из 15000 (8%) · Group"
+    assert app.apply_line(ApplyProgress(1200, 15000, "Group", 31)) == (
+        "Удаляю: 1200 из 15000 (8%) · Telegram попросил подождать 31 с, жду · Group"
+    )
+    assert app.apply_line(ApplyProgress(0, 0)) == "Удаляю: 0 из 0 (100%)"
+
+
+def test_durations():
+    assert [app.duration(s) for s in (0, 59.4, 61, 3599, 3600, 3725)] == [
+        "0 с", "59 с", "1 мин", "1 ч", "1 ч", "1 ч 2 мин"
+    ]
+
+
+def test_main_routes_library_warnings_through_the_ui(monkeypatch, tmp_path):
+    import logging
+
+    from tgsweep.ui import SayHandler
+
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: True, raising=False)
+    monkeypatch.setenv("TGSWEEP_HOME", str(tmp_path))
+    lib = logging.getLogger("telethon")
+    saved = lib.handlers[:], lib.level, lib.propagate
+    seen = []
+
+    async def fake_run(args, home, ui):
+        seen.append([h for h in lib.handlers if isinstance(h, SayHandler) and h.ui is ui])
+        return 0
+
+    monkeypatch.setattr(cli, "run", fake_run)
+    try:
+        assert cli.main([]) == 0
+    finally:
+        lib.handlers[:], lib.level, lib.propagate = saved
+    assert len(seen[0]) == 1

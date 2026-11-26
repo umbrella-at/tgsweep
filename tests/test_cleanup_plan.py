@@ -285,16 +285,16 @@ async def test_reaction_limit_rewinds_the_scan_so_the_rest_comes_next_run(sleepe
     assert third.deferred_reactions == 0
 
 
-async def test_zero_reaction_limit_never_advances_the_scan(sleeper):
+async def test_zero_reaction_batch_means_reactions_are_not_searched(sleeper):
+    """Reactions that would never be removed are not offered: the owner would confirm them in vain."""
     client = FakeClient()
     group = client.add_channel(100, "G")
     client.add_message(group, SECOND, "x", date=OLD, my_reaction=True)
     state: dict[str, int] = {}
-    policy = Policy(max_reactions_per_run=0)
-    plan = narrowed(p := await plan_for(client, policy, state=state), p.targets, policy)
-    await apply_plan(client, plan, me_id=ME, journal=Journal(None), reaction_state=state, sleep=sleeper)
-    assert state.get("-1000000000100", 0) == 0
-    assert plan.reactions == 0 and plan.deferred_reactions == 1
+    plan = await plan_for(client, Policy(max_reactions_per_run=0), state=state)
+    assert plan.reactions == 0 and plan.targets == []
+    assert not any(c[0] == "iter_messages" and c[1]["reverse"] for c in client.calls)  # no reaction scan
+    assert state == {}
 
 
 def test_plan_expires_fifteen_minutes_after_it_was_made():
