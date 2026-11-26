@@ -16,7 +16,13 @@ import unicodedata
 from typing import Any, Callable, TextIO
 
 import questionary
+from prompt_toolkit.key_binding import KeyBindings, merge_key_bindings
 from wcwidth import wcswidth, wcwidth
+
+# The letters on the same keys in the Russian layout. A terminal sends the letter, not the key,
+# so with the Russian layout on, the key marked A sends «ф» and questionary's «a» does nothing.
+LATIN_KEYS = "qwertyuiopasdfghjklzxcvbnm"
+RUSSIAN_KEYS = "йцукенгшщзфывапролдячсмить"
 
 CHOOSE_HINT = "(стрелки и Enter)"
 PICK_HINT = "(стрелки двигают, пробел отмечает, a отмечает все, Enter продолжает)"
@@ -169,6 +175,19 @@ class StatusLine:
             self.draw()
 
 
+def with_russian_keys(question: questionary.Question) -> questionary.Question:
+    """Every letter shortcut of the question also works on the Russian layout: «ф» like a, «н» like y, «т» like n."""
+    russian = dict(zip(LATIN_KEYS + LATIN_KEYS.upper(), RUSSIAN_KEYS + RUSSIAN_KEYS.upper()))
+    bindings = question.application.key_bindings
+    extra = KeyBindings()
+    for binding in bindings.bindings:
+        if all(key in russian for key in binding.keys):  # letters only: arrows, Enter and the catch-all stay as they are
+            keys = [russian[key] for key in binding.keys]
+            extra.add(*keys, filter=binding.filter, eager=binding.eager)(binding.handler)
+    question.application.key_bindings = merge_key_bindings([bindings, extra])
+    return question
+
+
 class TerminalUI:
     def __init__(self, *, status: StatusLine | None = None, **io: Any) -> None:
         """io: prompt_toolkit input= and output=, for tests."""
@@ -194,7 +213,7 @@ class TerminalUI:
     async def _answer(self, question: questionary.Question) -> Any:
         """None when the user presses Ctrl+C or Ctrl+D: backing out of a question deletes nothing."""
         try:
-            return await question.unsafe_ask_async(patch_stdout=False)
+            return await with_russian_keys(question).unsafe_ask_async(patch_stdout=False)
         except (KeyboardInterrupt, EOFError):
             return None
 

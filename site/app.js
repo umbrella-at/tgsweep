@@ -167,11 +167,11 @@
 
   list.addEventListener("keydown", (e) => {
     if (answered) return;
-    const key = e.key;
-    if (key === "ArrowDown" || key === "j") { pointer = (pointer + 1) % data.length; }
-    else if (key === "ArrowUp" || key === "k") { pointer = (pointer - 1 + data.length) % data.length; }
+    const key = e.key;  // the program also takes the Russian letters on the same keys: о, л, ф
+    if (key === "ArrowDown" || key === "j" || key === "о") { pointer = (pointer + 1) % data.length; }
+    else if (key === "ArrowUp" || key === "k" || key === "л") { pointer = (pointer - 1 + data.length) % data.length; }
     else if (key === " " || key === "Spacebar") { toggle(pointer); }
-    else if (key === "a") { toggleAll(); }
+    else if (key === "a" || key === "ф") { toggleAll(); }
     else if (key === "Enter") { e.preventDefault(); answer(); return; }
     else return;
     e.preventDefault();

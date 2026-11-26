@@ -486,6 +486,51 @@ async def test_terminal_pick_ticks_with_space(terminal):
     assert await ui.pick("Q", ["a", "b", "c"]) == [1, 2]
 
 
+async def test_terminal_pick_ticks_all_with_a(terminal):
+    pipe, ui = terminal
+    pipe.send_text("a" + ENTER)
+    assert await ui.pick("Q", ["a", "b", "c"]) == [0, 1, 2]
+
+
+# The Russian layout: the keys marked A, J, Y and N send these letters instead.
+
+
+async def test_terminal_pick_ticks_all_on_the_russian_layout(terminal):
+    pipe, ui = terminal
+    pipe.send_text("ф" + ENTER)
+    assert await ui.pick("Q", ["a", "b", "c"]) == [0, 1, 2]
+
+
+async def test_terminal_pick_unticks_all_on_the_russian_layout(terminal):
+    pipe, ui = terminal
+    pipe.send_text("фф" + ENTER)
+    assert await ui.pick("Q", ["a", "b", "c"]) == []
+
+
+async def test_terminal_choose_moves_down_on_the_russian_layout(terminal):
+    pipe, ui = terminal
+    pipe.send_text("о" + ENTER)
+    assert await ui.choose("Q", app.RETENTION_CHOICES) == 1
+
+
+async def test_terminal_yes_no_takes_a_no_on_the_russian_layout(terminal):
+    pipe, ui = terminal
+    pipe.send_text("т" + ENTER)
+    assert await ui.yes_no("Q", default=True) is False
+
+
+async def test_terminal_yes_no_takes_a_capital_yes_on_the_russian_layout(terminal):
+    pipe, ui = terminal
+    pipe.send_text("Н" + ENTER)
+    assert await ui.yes_no("Q", default=False) is True
+
+
+async def test_terminal_other_russian_letters_do_nothing(terminal):
+    pipe, ui = terminal
+    pipe.send_text("ыщ" + ENTER)
+    assert await ui.pick("Q", ["a", "b", "c"]) == []
+
+
 async def answered(coro):
     """A KeyboardInterrupt escaping a question would end the whole program: fail the test instead."""
     try:
