@@ -1,0 +1,40 @@
+[project]
+name = "tgsweep"
+version = "0.1.0"
+description = "Delete your own Telegram messages from the chats you pick"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "umbrella-at", email = "148526531+umbrella-at@users.noreply.github.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "platformdirs>=4.3.0",
+    "pydantic>=2.14.3",
+    "pyyaml>=6.0.3",
+    "questionary>=2.1.1",
+    "segno>=1.6.6",
+    "telethon>=1.45.0",
+]
+
+[project.scripts]
+tgsweep = "tgsweep.cli:main"
+
+[project.urls]
+Source = "https://github.com/umbrella-at/tgsweep"
+
+[build-system]
+requires = ["uv_build>=0.12.5,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "anyio>=4.15.1",
+    "pytest>=9.2.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+filterwarnings = ["error::RuntimeWarning"]
