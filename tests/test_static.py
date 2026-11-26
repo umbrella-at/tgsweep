@@ -222,6 +222,19 @@ def test_caddy_site_matches_the_page():
     assert not [d for d in directives if d.startswith(("log", "import"))]
 
 
+def test_link_preview_image_is_published():
+    # Telegram builds the link preview from og:image: an absolute URL to a file the deploy uploads.
+    page = (REPO / "site" / "index.html").read_text(encoding="utf-8")
+    meta = dict(re.findall(r'<meta property="(og:[a-z:_]+)" content="([^"]*)">', page))
+    assert meta["og:image"] == "https://tgsweep.atworks.dev/og.png"
+    png = (REPO / "site" / "og.png").read_bytes()
+    assert png[:8] == b"\x89PNG\r\n\x1a\n" and png[12:16] == b"IHDR"
+    width, height = int.from_bytes(png[16:20], "big"), int.from_bytes(png[20:24], "big")
+    assert (width, height) == (1200, 630)
+    assert (meta["og:image:width"], meta["og:image:height"]) == ("1200", "630")
+    assert len(png) < 300_000
+
+
 def test_banned_names_not_even_referenced():
     found = set()
     for name, c in collect().items():
