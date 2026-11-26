@@ -8,16 +8,18 @@ tgsweep работает на компьютере пользователя, с�
 uv tool install https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip
 ```
 
-Поэтому каждый push в main сразу получают новые установки и `uv tool upgrade tgsweep`. Git у пользователя не нужен. tgctl ставит tgsweep по тегу, push в main его не задевает.
+Поэтому каждый push в main сразу получают новые установки и `uv tool upgrade tgsweep`. Git у пользователя не нужен. tgctl ставит tgsweep по тегу, push в main его не задевает. Если код станет закрытым, поменяется только эта команда на сайте и в README.
 
 ## Сайт tgsweep.atworks.dev
 
 - Исходники: папка `site/`, статические HTML, CSS, JS и шрифты. Сборки нет, файлы уходят как есть.
-- Хостинг: GitHub Pages репозитория umbrella-at/tgsweep, источник GitHub Actions.
-- Деплой: workflow `.github/workflows/pages.yml`. Запускается на push в main, если изменилась папка `site/` или сам workflow, и вручную: Actions, pages, Run workflow.
-- Домен: в Cloudflare, зона atworks.dev, запись CNAME `tgsweep` на `umbrella-at.github.io` с выключенным прокси (серое облако, DNS only), иначе GitHub не выпустит сертификат. В настройках Pages указан домен tgsweep.atworks.dev и включён Enforce HTTPS. Файл CNAME в `site/` не нужен: при деплое через Actions GitHub его не читает.
-- Проверка перед push: `python3 -m http.server -d site 8000` и открыть http://127.0.0.1:8000. Через file:// страница откроется без шрифтов: их не пропускает CSP.
-- CSP задана тегом meta в `site/index.html`: скрипты только свои и с gc.zgo.at, отправка данных только на *.goatcounter.com.
+- Хостинг: forester (77.90.43.37), общий Caddy хоста. Сайт описан в `/etc/caddy/sites/tgsweep.caddy`: статика из `/var/www/tgsweep/current`, сжатие, заголовки безопасности и CSP. Журнала доступа нет намеренно: он хранил бы IP посетителей, а сайт обещает не собирать личные данные.
+- Копия файла сайта лежит в `deploy/tgsweep.caddy` и ставится на сервер руками, деплой её не трогает. Правка: скопировать файл, `runuser -u caddy -- caddy validate --config /etc/caddy/Caddyfile`, затем `systemctl reload caddy` (не restart). Reload только при пустой очереди загрузок страницы съёмки daim, правила хоста в `/etc/caddy/README-sites.md` на forester.
+- Деплой: `scripts/deploy-site.sh` с компьютера, где есть ssh-доступ к forester (Host forester в `~/.ssh/config`). Скрипт кладёт `site/` в новую папку `/var/www/tgsweep/releases/<время>` и одним шагом переключает на неё ссылку `current`; хранятся три последних выпуска. Reload Caddy для этого не нужен. Push в main сайт не выкладывает.
+- Откат: на forester `cd /var/www/tgsweep && ln -sfn releases/<прошлый выпуск> current.new && mv -Tf current.new current`.
+- Домен: в Cloudflare, зона atworks.dev, запись A `tgsweep` на 77.90.43.37 с выключенным прокси (серое облако, DNS only), как у остальных сайтов forester. Сертификат Let's Encrypt Caddy получает и продлевает сам.
+- Проверка перед деплоем: `python3 -m http.server -d site 8000` и открыть http://127.0.0.1:8000. Через file:// страница откроется без шрифтов: их не пропускает CSP.
+- CSP задана дважды: заголовком в `deploy/tgsweep.caddy` (там же запрет встраивать страницу в чужие сайты) и тегом meta в `site/index.html`. Скрипты только свои и с gc.zgo.at, отправка данных только на *.goatcounter.com.
 - Статистика: GoatCounter, сайт umbrella.goatcounter.com, без cookies. В его настройках (Settings, Data collection) включены только Referrer и Sessions, чтобы подпись в подвале сайта была правдой. Код счётчика вставляется в `site/index.html` перед `</body>`.
 - Шрифты Golos Text и JetBrains Mono (OFL 1.1) лежат в `site/fonts/` вместе с лицензиями. Они урезаны до латиницы, кириллицы и символов терминала, поэтому весят 44 и 20 КБ.
 - Экраны терминала на странице сняты с настоящей программы на выдуманном аккаунте из `tests/fake.py`. Если меняются тексты программы, экраны надо переснять.

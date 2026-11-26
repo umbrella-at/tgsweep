@@ -208,6 +208,20 @@ def test_site_and_readme_install_the_same_way():
     assert "git+" not in readme and "git+" not in page
 
 
+def test_caddy_site_matches_the_page():
+    # Both CSPs apply in the browser, so a source added to only one of them is still blocked.
+    page = (REPO / "site" / "index.html").read_text(encoding="utf-8")
+    caddy = (REPO / "deploy" / "tgsweep.caddy").read_text(encoding="utf-8")
+    meta = re.findall(r'<meta http-equiv="Content-Security-Policy" content="([^"]+)">', page)
+    header = re.findall(r'^\s*Content-Security-Policy "([^"]+)"$', caddy, re.M)
+    assert len(meta) == 1 and len(header) == 1
+    assert header[0] == meta[0] + "; frame-ancestors 'none'"
+    # The page promises no personal data: no access log with visitor IPs.
+    directives = [line.split("#")[0].strip() for line in caddy.splitlines()]
+    assert "tgsweep.atworks.dev {" in directives
+    assert not [d for d in directives if d.startswith(("log", "import"))]
+
+
 def test_banned_names_not_even_referenced():
     found = set()
     for name, c in collect().items():

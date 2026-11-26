@@ -1,0 +1,30 @@
+# /etc/caddy/sites/tgsweep.caddy on forester: tgsweep.atworks.dev, the instructions page of
+# the tgsweep program, the static files of /var/www/tgsweep/current. The deploy
+# (scripts/deploy-site.sh of the tgsweep repo) fills /var/www/tgsweep/releases and switches
+# the current link; it does not touch this file.
+#
+# Installed by hand as root from deploy/tgsweep.caddy of the repo. After a change, copy it
+# again, validate as the caddy user and reload, never restart:
+#
+#     runuser -u caddy -- caddy validate --config /etc/caddy/Caddyfile
+#     systemctl reload caddy
+#
+# No access log, on purpose: no `log` and no `import common` (that snippet writes one). The
+# page says the site counts visits without personal data, and an access log would keep the
+# IP of every visitor. Caddy logs 4xx errors at debug level only, so a 404 leaves no trace.
+tgsweep.atworks.dev {
+	root * /var/www/tgsweep/current
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# The page's own files, plus the GoatCounter script and its count requests.
+		Content-Security-Policy "default-src 'self'; script-src 'self' https://gc.zgo.at; connect-src 'self' https://*.goatcounter.com; img-src 'self' data: https://*.goatcounter.com; style-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+		# Checked on every visit: a deploy shows at once, unchanged files answer 304.
+		Cache-Control "no-cache"
+	}
+
+	file_server
+}
