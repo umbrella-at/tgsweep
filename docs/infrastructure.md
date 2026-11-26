@@ -8,7 +8,7 @@ tgsweep работает на компьютере пользователя, с�
 uv tool install https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip
 ```
 
-Поэтому каждый push в main сразу получают новые установки и `uv tool upgrade tgsweep`. Git у пользователя не нужен. tgctl ставит tgsweep по тегу, push в main его не задевает. Если код станет закрытым, поменяется только эта команда на сайте и в README.
+Поэтому каждый push в main сразу получают новые установки и обновление `uv tool install --reinstall` с тем же адресом. `uv tool upgrade tgsweep` новый архив не скачивает: у ответа GitHub нет заголовков кэширования, uv берёт архив из своего кэша и пишет «Nothing to upgrade» (проверено на uv 0.12.5, 2026-11-27). Git у пользователя не нужен. tgctl ставит tgsweep по тегу, push в main его не задевает. Если код станет закрытым, поменяется только эта команда на сайте и в README.
 
 ## Сайт tgsweep.atworks.dev
 

@@ -33,7 +33,13 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 uv tool install https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip
 ```
 
-Git для этого не нужен. Обновление: `uv tool upgrade tgsweep`.
+Git для этого не нужен. Обновление: та же команда с `--reinstall`, она скачает свежую версию:
+
+```sh
+uv tool install --reinstall https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip
+```
+
+`uv tool upgrade tgsweep` для этого не годится: архив по тому же адресу uv второй раз не скачивает и отвечает «Nothing to upgrade».
 
 ## api_id и api_hash
 

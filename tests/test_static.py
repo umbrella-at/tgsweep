@@ -192,7 +192,8 @@ INSTALL_COMMANDS = {
     'powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"',
     "curl -LsSf https://astral.sh/uv/install.sh | sh",
     "uv tool install https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip",
-    "uv tool upgrade tgsweep",
+    # uv tool upgrade does not fetch the archive again (it answers "Nothing to upgrade"), so updates reinstall.
+    "uv tool install --reinstall https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip",
 }
 
 
@@ -204,7 +205,11 @@ def test_site_and_readme_install_the_same_way():
         assert command in readme, command
         assert command in commands, command
     installs = {c for c in commands if c.startswith("uv tool install")}
-    assert installs == {"uv tool install https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip"}
+    assert installs == {
+        "uv tool install https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip",
+        "uv tool install --reinstall https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip",
+    }
+    assert not [c for c in commands if c.startswith("uv tool upgrade")]
     assert "git+" not in readme and "git+" not in page
 
 
