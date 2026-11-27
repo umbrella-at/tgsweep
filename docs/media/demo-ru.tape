@@ -15,12 +15,12 @@ Set Width 1200
 Set Height 760
 Set Padding 24
 Set Margin 24
-Set MarginFill "#E3EAE4"
+Set MarginFill "#F3F5F8"
 Set WindowBar Colorful
 Set BorderRadius 10
 Set TypingSpeed 90ms
 Set CursorBlink false
-Set Theme { "name": "tgsweep", "background": "#132620", "foreground": "#D3E0D7", "selection": "#2B4A3E", "cursor": "#D3E0D7", "black": "#1B3129", "red": "#E8806F", "green": "#8FC48A", "yellow": "#FFB627", "blue": "#79A3CC", "magenta": "#C79BD8", "cyan": "#7CC4BC", "white": "#D3E0D7", "brightBlack": "#8BA597", "brightRed": "#F29A8B", "brightGreen": "#A9D6A4", "brightYellow": "#FFC85A", "brightBlue": "#9BBEE0", "brightMagenta": "#D8B4E6", "brightCyan": "#9AD6CF", "brightWhite": "#F1F7F3" }
+Set Theme { "name": "tgsweep", "background": "#0E1621", "foreground": "#D6E2ED", "selection": "#2B5278", "cursor": "#D6E2ED", "black": "#17212B", "red": "#E8806F", "green": "#8FC48A", "yellow": "#FFB627", "blue": "#6AB3F3", "magenta": "#C79BD8", "cyan": "#7CC4BC", "white": "#D6E2ED", "brightBlack": "#8296A9", "brightRed": "#F29A8B", "brightGreen": "#A9D6A4", "brightYellow": "#FFC85A", "brightBlue": "#9CCBF7", "brightMagenta": "#D8B4E6", "brightCyan": "#9AD6CF", "brightWhite": "#FFFFFF" }
 
 Hide
 Type "export PS1='~ % '" Enter
