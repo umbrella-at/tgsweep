@@ -177,10 +177,10 @@ To add $HOME/.local/bin to your PATH, either restart your shell or run:
         <span class="num" aria-hidden="true">4</span>
         <div class="step-body">
           <h4>Установите tgsweep</h4>
-          <div class="cmd"><code>uv tool install https://github.com/<wbr>umbrella-at/<wbr>tgsweep/<wbr>archive/<wbr>refs/<wbr>heads/<wbr>main.zip</code><button type="button" class="copy">Копировать</button></div>
-          <p>uv скачает программу из открытого репозитория на GitHub вместе со всем необходимым. Git для этого не понадобится.</p>
+          <div class="cmd"><code>uv tool install tgsweep</code><button type="button" class="copy">Копировать</button></div>
+          <p>uv скачает программу с PyPI, общего каталога программ на Python, вместе со всем необходимым.</p>
           <figure class="shot">
-            <div class="term"><div class="term-bar" aria-hidden="true">Терминал</div><pre class="term-body"><span class="pr">maria@MacBook ~ %</span> uv tool install https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip
+            <div class="term"><div class="term-bar" aria-hidden="true">Терминал</div><pre class="term-body"><span class="pr">maria@MacBook ~ %</span> uv tool install tgsweep
 Downloading cpython-3.14.7-macos-aarch64-none (download) (25.3MiB)
  Downloaded cpython-3.14.7-macos-aarch64-none (download)
 Resolved 16 packages in 6.44s
@@ -329,8 +329,10 @@ api_hash (при вводе не виден): <span class="cur" aria-hidden="tru
   <div class="maintain-list">
     <div class="maintain-row">
       <h3>Обновить программу</h3>
-      <p>Та же команда, что при установке, но с параметром <code class="inline">--reinstall</code>: она скачает свежую версию и установит её поверх старой.</p>
-      <div class="cmd"><code>uv tool install --reinstall https://github.com/<wbr>umbrella-at/<wbr>tgsweep/<wbr>archive/<wbr>refs/<wbr>heads/<wbr>main.zip</code><button type="button" class="copy">Копировать</button></div>
+      <p>Одна команда скачает и установит свежую версию:</p>
+      <div class="cmd"><code>uv tool upgrade tgsweep</code><button type="button" class="copy">Копировать</button></div>
+      <p>Если вы ставили tgsweep раньше по ссылке на архив с GitHub, один раз перейдите на версию с PyPI:</p>
+      <div class="cmd"><code>uv tool install --force tgsweep</code><button type="button" class="copy">Копировать</button></div>
     </div>
     <div class="maintain-row">
       <h3>Выйти из аккаунта позже</h3>
@@ -371,7 +373,7 @@ api_hash (при вводе не виден): <span class="cur" aria-hidden="tru
       <p data-os="mac">Всё лежит в папке <samp>~/Library/Application Support/tgsweep</samp>.</p>
       <p data-os="linux">Всё лежит в папке <samp>~/.local/share/tgsweep</samp>.</p>
       <h3>Проверьте сами</h3>
-      <p>Код открыт: <a href="https://github.com/umbrella-at/tgsweep">github.com/umbrella-at/tgsweep</a>. Если сами код не читаете, дайте ссылку любому ИИ-чату и спросите, что программа отправляет и что удаляет. В репозитории есть тесты, которые не дают программе лишних умений: писать сообщения, выходить из групп, удалять чужое.</p>
+      <p>Код открыт: <a href="https://github.com/umbrella-at/tgsweep">github.com/umbrella-at/tgsweep</a>. Если сами код не читаете, дайте ссылку любому ИИ-чату и спросите, что программа отправляет и что удаляет. В репозитории есть тесты, которые не дают программе лишних умений: писать сообщения, выходить из групп, удалять чужое. PyPI показывает, из какого репозитория и какой сборки пришла каждая версия.</p>
     </div>
   </div>
 </section>
@@ -412,7 +414,7 @@ api_hash (при вводе не виден): <span class="cur" aria-hidden="tru
   </details>
   <details>
     <summary>Почему через терминал, а не обычное приложение?</summary>
-    <p>Программа маленькая, и так её проще проверить: она устанавливается одной командой прямо из открытого кода, без установщика, внутри которого неизвестно что.</p>
+    <p>Программа маленькая, и так её проще проверить: она устанавливается одной командой из каталога PyPI, а выкладывает её туда открытый сценарий сборки на GitHub. Никакого установщика, внутри которого неизвестно что.</p>
   </details>
   <details>
     <summary>Программа пишет по-английски</summary>

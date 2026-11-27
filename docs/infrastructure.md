@@ -2,13 +2,39 @@
 
 ## Программа
 
-tgsweep работает на компьютере пользователя, сервера у него нет. Ставят его через uv из архива ветки main:
+tgsweep работает на компьютере пользователя, сервера у него нет. Ставят его с PyPI через uv, Git у пользователя не нужен:
 
 ```sh
-uv tool install https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip
+uv tool install tgsweep
 ```
 
-Поэтому каждый push в main сразу получают новые установки и обновление `uv tool install --reinstall` с тем же адресом. `uv tool upgrade tgsweep` новый архив не скачивает: у ответа GitHub нет заголовков кэширования, uv берёт архив из своего кэша и пишет «Nothing to upgrade» (проверено на uv 0.12.5, 2026-11-27). Git у пользователя не нужен. tgctl ставит tgsweep по тегу, push в main его не задевает. Если код станет закрытым, поменяется только эта команда на сайте и в README.
+Обновление: `uv tool upgrade tgsweep`. Страница пакета: https://pypi.org/project/tgsweep/. `uv tool install` выбирает версии зависимостей по диапазонам из `pyproject.toml`, а не по `uv.lock`, поэтому у каждой зависимости есть верхняя граница: новая мажорная версия библиотеки (у questionary и prompt-toolkit даже минорная) не попадёт в установки, пока на ней не прогнаны тесты. Границы поднимаются руками. Dependabot (`.github/dependabot.yml`) раз в неделю предлагает обновления uv и GitHub Actions; новую версию он берёт не раньше чем через 7 дней после выхода.
+
+tgctl ставит tgsweep по своему тегу, выпуски на PyPI и push в main его не задевают.
+
+### Выпуск версии
+
+На PyPI пакет выкладывает `.github/workflows/release.yml` через trusted publishing: паролей и токенов PyPI в секретах репозитория нет. PyPI доверяет запуску по имени файла и окружения: проект tgsweep, владелец umbrella-at, репозиторий tgsweep, workflow `release.yml`, окружение `pypi`. Если переименовать файл или окружение, публикация перестанет проходить, пока издателя на PyPI не поправить так же.
+
+1. Поднять версию в `pyproject.toml` и `src/tgsweep/__init__.py`, выполнить `uv lock`.
+2. Добавить в начало `CHANGELOG.md` раздел `## [X.Y.Z] - ГГГГ-ММ-ДД` и ссылку сравнения внизу файла. `test_static` сверяет версию в трёх местах.
+3. Коммит, push, CI зелёный.
+4. Тег `vX.Y.Z` на этот коммит и push тега. release.yml сверяет тег с версией и разделом CHANGELOG (`scripts/release.py check`), гоняет тесты, собирает пакет (`uv build`), проверяет его `twine check --strict` и состав wheel: только пакет tgsweep и метаданные.
+5. Публикация ждёт подтверждения в окружении `pypi` (Settings, Environments; подтверждает umbrella-at): в запуске Actions нажать Review deployments, отметить pypi, Approve and deploy. После публикации тот же запуск создаёт GitHub Release по тегу с разделом CHANGELOG и файлами из `dist/`.
+
+Файлы версии PyPI принимает один раз: загрузить их заново нельзя даже после удаления. Если что-то не так после публикации, исправление уходит следующей версией. Если запуск упал до публикации, можно поправить коммит, удалить тег и поставить его заново.
+
+### Установка из main.zip
+
+До 0.3.0 (27.11.2026) сайт и README ставили программу из архива ветки main. Так по-прежнему можно поставить непроверенную сборку, то, что уже лежит в main, но ещё не выпущено:
+
+```sh
+uv tool install --force https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip
+```
+
+`uv tool upgrade tgsweep` такую установку не обновляет: у ответа GitHub нет заголовков кэширования, uv берёт архив из своего кэша и пишет «Nothing to upgrade» (проверено на uv 0.12.5, 2026-11-27). Свежий main ставит только `uv tool install --reinstall` с тем же адресом.
+
+Вернуться на PyPI: `uv tool install --force tgsweep`. Проверено на uv 0.13.10 (2026-11-27): после неё `uv tool list` показывает версию с PyPI, и дальше работает `uv tool upgrade tgsweep`. Без `--force` uv только запоминает новый источник, а установленная из архива версия остаётся до следующего upgrade.
 
 ## Сайт tgsweep.atworks.dev
 
@@ -30,7 +56,7 @@ uv tool install https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.z
 
 ## Записи работы программы в README
 
-- В начале `README.md` и `README.ru.md` стоят записи терминала: `docs/media/demo-en.gif` и `docs/media/demo-ru.gif`. Сценарии VHS (charmbracelet/vhs) лежат рядом: `docs/media/demo-en.tape` и `docs/media/demo-ru.tape`. В архив main.zip, из которого ставится программа, папка `docs/media` не попадает: `.gitattributes` помечает её `export-ignore`. На GitHub README показывает записи как раньше, это правило действует только на архивы.
+- В начале `README.md` и `README.ru.md` стоят записи терминала: `docs/media/demo-en.gif` и `docs/media/demo-ru.gif`. Сценарии VHS (charmbracelet/vhs) лежат рядом: `docs/media/demo-en.tape` и `docs/media/demo-ru.tape`. В архив main.zip папка `docs/media` не попадает: `.gitattributes` помечает её `export-ignore`. В пакет на PyPI она не попадает тоже: в wheel идёт только `src/tgsweep`. README на GitHub и на PyPI показывает записи по абсолютным адресам raw.githubusercontent.com.
 - Записывается настоящая программа (`cli.run`, `sweep`, вопросы в терминале) на выдуманном аккаунте. `scripts/demo.py en` или `ru` собирает мир Марии на `FakeClient` из `tests/fake.py` (те же чаты и числа, что на сайте), берёт временную папку программы и выдуманные api_id и api_hash. Сети нет: фабрика клиентов отдаёт только `FakeClient`. Паузы сокращены в самом скрипте: ответы `FakeClient` идут с небольшими задержками, паузы между запросами удаления в 10 раз короче настоящих. Код программы ради записи не меняется.
 - Пересобирать, когда меняются тексты или ход программы (вопросы, строки поиска и итога) или числа демо-мира. `tests/test_demo.py` прогоняет мир через программу и сверяет числа записи: если он падает, записи устарели.
 - Нужны vhs (`brew install vhs`, он ставит ttyd и ffmpeg) и шрифт JetBrains Mono (`brew install --cask font-jetbrains-mono`); проверено на vhs 0.12.1. Из корня репозитория:

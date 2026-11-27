@@ -10,6 +10,7 @@ import os
 import re
 import stat
 import sys
+import tomllib
 from datetime import timedelta
 from pathlib import Path
 from types import SimpleNamespace
@@ -513,7 +514,9 @@ def test_version(capsys):
     with pytest.raises(SystemExit) as exc:
         cli.main(["--version"])
     assert exc.value.code == 0
-    assert capsys.readouterr().out.strip() == "tgsweep 0.2.0"
+    # The version comes from tgsweep.__version__; test_static keeps it equal to pyproject.toml.
+    project = tomllib.loads((Path(__file__).resolve().parent.parent / "pyproject.toml").read_text(encoding="utf-8"))
+    assert capsys.readouterr().out == f"tgsweep {project['project']['version']}\n"
 
 
 async def test_backing_out_of_the_number_deletes_nothing(laptop):

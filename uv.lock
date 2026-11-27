@@ -414,10 +414,11 @@ wheels = [
 
 [[package]]
 name = "tgsweep"
-version = "0.2.0"
+version = "0.3.0"
 source = { editable = "." }
 dependencies = [
     { name = "platformdirs" },
+    { name = "prompt-toolkit" },
     { name = "pydantic" },
     { name = "pyyaml" },
     { name = "questionary" },
@@ -435,13 +436,14 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "platformdirs", specifier = ">=4.3.0" },
-    { name = "pydantic", specifier = ">=2.14.3" },
-    { name = "pyyaml", specifier = ">=6.0.3" },
-    { name = "questionary", specifier = ">=2.1.1" },
-    { name = "segno", specifier = ">=1.6.6" },
-    { name = "telethon", specifier = ">=1.45.0" },
-    { name = "wcwidth", specifier = ">=0.9.4" },
+    { name = "platformdirs", specifier = ">=4.3.0,<5" },
+    { name = "prompt-toolkit", specifier = ">=3.0.53,<3.1" },
+    { name = "pydantic", specifier = ">=2.14.3,<3" },
+    { name = "pyyaml", specifier = ">=6.0.3,<7" },
+    { name = "questionary", specifier = ">=2.1.1,<2.2" },
+    { name = "segno", specifier = ">=1.6.6,<2" },
+    { name = "telethon", specifier = ">=1.45.0,<2" },
+    { name = "wcwidth", specifier = ">=0.9.4,<1" },
 ]
 
 [package.metadata.requires-dev]

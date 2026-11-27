@@ -106,8 +106,10 @@ def test_the_demo_never_makes_a_real_telegram_client():
 
 @pytest.mark.parametrize("readme", READMES, ids=lambda p: p.name)
 def test_the_readme_recording_is_there_and_small(readme):
-    gifs = re.findall(r"!\[[^\]]+\]\((docs/media/[^)]+\.gif)\)", readme.read_text(encoding="utf-8"))
-    assert len(gifs) == 1
-    path = REPO / gifs[0]
+    # An absolute address: PyPI shows README.md too, and the GIFs are not in the package.
+    raw = "https://raw.githubusercontent.com/umbrella-at/tgsweep/main/"
+    gifs = re.findall(r"!\[[^\]]+\]\(([^)]+\.gif)\)", readme.read_text(encoding="utf-8"))
+    assert gifs == [raw + {"README.md": "docs/media/demo-en.gif", "README.ru.md": "docs/media/demo-ru.gif"}[readme.name]]
+    path = REPO / gifs[0].removeprefix(raw)
     assert path.is_file(), path
     assert path.stat().st_size <= MAX_GIF, (path.name, path.stat().st_size)

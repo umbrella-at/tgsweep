@@ -8,7 +8,10 @@ import json
 import re
 import shutil
 import subprocess
+import sys
+import tomllib
 import zipfile
+from importlib.metadata import packages_distributions
 from collections import Counter
 from html.parser import HTMLParser
 from pathlib import Path
@@ -210,7 +213,7 @@ def test_no_dashes_in_human_texts():
 
 
 def test_install_archive_leaves_the_recordings_out(tmp_path):
-    """main.zip, the archive tgsweep is installed from, is made by git archive: the GIFs stay out of it."""
+    """main.zip, the archive of the main branch (an unreleased build), is made by git archive: no GIFs in it."""
     if shutil.which("git") is None or not (REPO / ".git").exists():
         pytest.skip("not a git checkout")
     archive = tmp_path / "main.zip"
@@ -230,10 +233,17 @@ INSTALL_COMMANDS = {
     "curl -LsSf https://astral.sh/uv/install.sh | sh",
     "source $HOME/.local/bin/env",
     '$env:Path = "$HOME\\.local\\bin;$env:Path"',
-    "uv tool install https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip",
-    # uv tool upgrade does not fetch the archive again (it answers "Nothing to upgrade"), so updates reinstall.
-    "uv tool install --reinstall https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip",
+    "uv tool install tgsweep",
+    "uv tool upgrade tgsweep",
+    # Moves an install from the GitHub archive to PyPI: without --force uv keeps the archive's build.
+    "uv tool install --force tgsweep",
 }
+# Said right before the --force command, on both pages and in both READMEs.
+SWITCH_NOTE = {
+    "ru": "Если вы ставили tgsweep раньше по ссылке на архив с GitHub, один раз перейдите на версию с PyPI:",
+    "en": "If you installed tgsweep earlier from the GitHub archive link, switch to the PyPI version once:",
+}
+README_LANG = {"README.md": "en", "README.ru.md": "ru"}
 
 
 def page_commands(text: str) -> list[str]:
@@ -246,18 +256,20 @@ def test_site_and_readme_install_the_same_way():
         readme = readme_path.read_text(encoding="utf-8")
         for command in INSTALL_COMMANDS:
             assert command in readme, (readme_path.name, command)
-        assert "git+" not in readme
+        for old in ("git+", "main.zip", "--reinstall", "Nothing to upgrade"):
+            assert old not in readme, (readme_path.name, old)
+        note = SWITCH_NOTE[README_LANG[readme_path.name]]
+        assert f"{note}\n\n```sh\nuv tool install --force tgsweep\n```" in readme, readme_path.name
     for lang in PAGES:
         commands = set(page_commands(page(lang)))
         for command in INSTALL_COMMANDS:
             assert command in commands, (lang, command)
-        installs = {c for c in commands if c.startswith("uv tool install")}
-        assert installs == {
-            "uv tool install https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip",
-            "uv tool install --reinstall https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip",
-        }
-        assert not [c for c in commands if c.startswith("uv tool upgrade")]
-        assert "git+" not in page(lang)
+        tool = {c for c in commands if c.startswith("uv tool") and c != "uv tool uninstall tgsweep"}
+        assert tool == {"uv tool install tgsweep", "uv tool upgrade tgsweep", "uv tool install --force tgsweep"}
+        for old in ("git+", "main.zip", "--reinstall", "Nothing to upgrade"):
+            assert old not in page(lang), (lang, old)
+        text = visible_text(page(lang))
+        assert f"{SWITCH_NOTE[lang]}\n      uv tool install --force tgsweep" in text, lang
     # Both pages give the same commands in the same places.
     assert len(page_commands(page("ru"))) > 10
     assert page_commands(page("en")) == page_commands(page("ru"))
@@ -395,7 +407,7 @@ def test_each_system_gets_its_own_commands(lang):
     assert systems['$env:Path = "$HOME\\.local\\bin;$env:Path"'] == "win"
     assert systems["curl -LsSf https://astral.sh/uv/install.sh | sh"] == "mac linux"
     assert systems['powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"'] == "win"
-    assert systems["uv tool install https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip"] is None
+    assert systems["uv tool install tgsweep"] is None
 
 
 def test_pages_have_the_same_shape():
@@ -516,3 +528,71 @@ def test_no_reflection_tricks():
         source = path.read_text(encoding="utf-8")
         for needle in REFLECTION:
             assert needle not in source, f"{name}: {needle}"
+
+
+# --- the package on PyPI --------------------------------------------------------
+
+
+def project() -> dict:
+    return tomllib.loads((REPO / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+
+
+# The bounds of the release brief: below the next major release, and questionary and prompt-toolkit
+# within their minor version, because ui.py relies on how they build a question.
+UPPER_BOUNDS = {
+    "telethon": "<2", "questionary": "<2.2", "prompt-toolkit": "<3.1", "pydantic": "<3",
+    "platformdirs": "<5", "segno": "<2", "pyyaml": "<7", "wcwidth": "<1",
+}
+
+
+def test_every_dependency_has_an_upper_bound():
+    # uv tool install resolves these ranges, not uv.lock: without a bound a new install gets any release.
+    bounds = {}
+    for requirement in project()["dependencies"]:
+        name, spec = re.fullmatch(r"([A-Za-z0-9._-]+)(.*)", requirement).groups()
+        parts = [part.strip() for part in spec.split(",")]
+        assert len(parts) == 2 and parts[0].startswith(">="), requirement
+        assert parts[1].startswith("<") and not parts[1].startswith("<="), requirement
+        bounds[name.lower()] = parts[1]
+    assert bounds == UPPER_BOUNDS
+
+
+def test_every_imported_library_is_a_direct_dependency():
+    # ui.py imports prompt_toolkit itself: it must not arrive only because questionary needs it.
+    def normal(name: str) -> str:  # PEP 503: prompt_toolkit and prompt-toolkit are one name
+        return re.sub(r"[-_.]+", "-", name).lower()
+
+    declared = {normal(re.match(r"[A-Za-z0-9._-]+", r).group()) for r in project()["dependencies"]}
+    distributions = packages_distributions()
+    imported = set()
+    for path in source_files().values():
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if isinstance(node, ast.Import):
+                imported |= {alias.name.split(".")[0] for alias in node.names}
+            elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+                imported.add(node.module.split(".")[0])
+    libraries = imported - set(sys.stdlib_module_names) - {"tgsweep"}
+    assert {"prompt_toolkit", "questionary", "telethon", "yaml"} <= libraries
+    used = {normal(distributions[name][0]) for name in libraries}
+    assert used <= declared, used - declared
+
+
+def test_one_version_in_pyproject_the_package_and_the_changelog():
+    version = project()["version"]
+    assert re.fullmatch(r"\d+\.\d+\.\d+", version)
+    assert tgsweep.__version__ == version
+    changelog = (REPO / "CHANGELOG.md").read_text(encoding="utf-8")
+    top = re.search(r"^## (.*)$", changelog, flags=re.M).group(1)
+    assert re.fullmatch(r"\[(\d+\.\d+\.\d+)\] - \d{4}-\d{2}-\d{2}", top).group(1) == version, top
+
+
+@pytest.mark.parametrize("readme", READMES, ids=lambda p: p.name)
+def test_readme_links_are_absolute(readme):
+    # PyPI shows README.md as the project page: a link relative to the repository leads nowhere there.
+    text = readme.read_text(encoding="utf-8")
+    targets = re.findall(r"\]\(([^)\s]+)\)", text)
+    targets += re.findall(r"^\[[^\]]+\]:\s*(\S+)", text, flags=re.M)
+    targets += re.findall(r"(?:src|href)=[\"']([^\"']+)", text)
+    assert len(targets) >= 8, targets
+    relative = [t for t in targets if not t.startswith(("https://", "http://", "mailto:"))]
+    assert relative == []

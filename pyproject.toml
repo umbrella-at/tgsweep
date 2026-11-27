@@ -1,6 +1,6 @@
 [project]
 name = "tgsweep"
-version = "0.2.0"
+version = "0.3.0"
 description = "Delete your own Telegram messages from the chats you pick"
 readme = "README.md"
 license = "MIT"
@@ -8,22 +8,41 @@ license-files = ["LICENSE"]
 authors = [
     { name = "umbrella-at", email = "148526531+umbrella-at@users.noreply.github.com" }
 ]
+keywords = ["telegram", "privacy", "cleanup", "delete messages", "cli"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Communications :: Chat",
+]
 requires-python = ">=3.11"
+# uv tool install resolves these ranges, not uv.lock: the upper bounds keep new installs off a major
+# release nobody has tested. ui.py relies on how questionary and prompt-toolkit build a question, so
+# those two stay within a minor version. A bound is raised by hand, after the tests pass on the new release.
 dependencies = [
-    "platformdirs>=4.3.0",
-    "pydantic>=2.14.3",
-    "pyyaml>=6.0.3",
-    "questionary>=2.1.1",
-    "segno>=1.6.6",
-    "telethon>=1.45.0",
-    "wcwidth>=0.9.4",
+    "platformdirs>=4.3.0,<5",
+    "prompt-toolkit>=3.0.53,<3.1",
+    "pydantic>=2.14.3,<3",
+    "pyyaml>=6.0.3,<7",
+    "questionary>=2.1.1,<2.2",
+    "segno>=1.6.6,<2",
+    "telethon>=1.45.0,<2",
+    "wcwidth>=0.9.4,<1",
 ]
 
 [project.scripts]
 tgsweep = "tgsweep.cli:main"
 
 [project.urls]
+Homepage = "https://tgsweep.atworks.dev/en/"
 Source = "https://github.com/umbrella-at/tgsweep"
+Issues = "https://github.com/umbrella-at/tgsweep/issues"
+Changelog = "https://github.com/umbrella-at/tgsweep/blob/main/CHANGELOG.md"
 
 [build-system]
 requires = ["uv_build>=0.12.5,<0.13.0"]

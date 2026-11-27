@@ -1,8 +1,13 @@
 # tgsweep
 
-[English](README.md) · Русский
+[![Версия на PyPI](https://img.shields.io/pypi/v/tgsweep)](https://pypi.org/project/tgsweep/)
+[![Версии Python](https://img.shields.io/pypi/pyversions/tgsweep)](https://pypi.org/project/tgsweep/)
+[![Тесты](https://img.shields.io/github/actions/workflow/status/umbrella-at/tgsweep/tests.yml?branch=main&label=tests)](https://github.com/umbrella-at/tgsweep/actions/workflows/tests.yml)
+[![Лицензия](https://img.shields.io/github/license/umbrella-at/tgsweep)](https://github.com/umbrella-at/tgsweep/blob/main/LICENSE)
 
-![tgsweep удаляет сообщения в двух отмеченных группах Telegram](docs/media/demo-ru.gif)
+[English](https://github.com/umbrella-at/tgsweep/blob/main/README.md) · Русский
+
+![tgsweep удаляет сообщения в двух отмеченных группах Telegram](https://raw.githubusercontent.com/umbrella-at/tgsweep/main/docs/media/demo-ru.gif)
 
 Запись на выдуманном аккаунте, паузы сокращены.
 
@@ -50,16 +55,24 @@ $env:Path = "$HOME\.local\bin;$env:Path"
 Теперь установите tgsweep:
 
 ```sh
-uv tool install https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip
+uv tool install tgsweep
 ```
 
-Git для этого не нужен. Обновление: та же команда с `--reinstall`, она скачает свежую версию:
+uv скачает программу с PyPI, общего каталога программ на Python, вместе со всем необходимым.
+
+## Обновление
+
+Одна команда скачает и установит свежую версию:
 
 ```sh
-uv tool install --reinstall https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip
+uv tool upgrade tgsweep
 ```
 
-`uv tool upgrade tgsweep` для этого не годится: архив по тому же адресу uv второй раз не скачивает и отвечает «Nothing to upgrade».
+Если вы ставили tgsweep раньше по ссылке на архив с GitHub, один раз перейдите на версию с PyPI:
+
+```sh
+uv tool install --force tgsweep
+```
 
 ## api_id и api_hash
 

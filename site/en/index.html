@@ -177,10 +177,10 @@ To add $HOME/.local/bin to your PATH, either restart your shell or run:
         <span class="num" aria-hidden="true">4</span>
         <div class="step-body">
           <h4>Install tgsweep</h4>
-          <div class="cmd"><code>uv tool install https://github.com/<wbr>umbrella-at/<wbr>tgsweep/<wbr>archive/<wbr>refs/<wbr>heads/<wbr>main.zip</code><button type="button" class="copy">Copy</button></div>
-          <p>uv downloads the program from the open repository on GitHub together with everything it needs. You do not need Git for this.</p>
+          <div class="cmd"><code>uv tool install tgsweep</code><button type="button" class="copy">Copy</button></div>
+          <p>uv downloads the program from PyPI, the public catalog of Python programs, together with everything it needs.</p>
           <figure class="shot">
-            <div class="term"><div class="term-bar" aria-hidden="true">Terminal</div><pre class="term-body"><span class="pr">maria@MacBook ~ %</span> uv tool install https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip
+            <div class="term"><div class="term-bar" aria-hidden="true">Terminal</div><pre class="term-body"><span class="pr">maria@MacBook ~ %</span> uv tool install tgsweep
 Downloading cpython-3.14.7-macos-aarch64-none (download) (25.3MiB)
  Downloaded cpython-3.14.7-macos-aarch64-none (download)
 Resolved 16 packages in 6.44s
@@ -329,8 +329,10 @@ You are signed out on this computer.</pre></div>
   <div class="maintain-list">
     <div class="maintain-row">
       <h3>Update the program</h3>
-      <p>The same command as for installation, but with <code class="inline">--reinstall</code>: it downloads the latest version and installs it over the old one.</p>
-      <div class="cmd"><code>uv tool install --reinstall https://github.com/<wbr>umbrella-at/<wbr>tgsweep/<wbr>archive/<wbr>refs/<wbr>heads/<wbr>main.zip</code><button type="button" class="copy">Copy</button></div>
+      <p>One command downloads and installs the latest version:</p>
+      <div class="cmd"><code>uv tool upgrade tgsweep</code><button type="button" class="copy">Copy</button></div>
+      <p>If you installed tgsweep earlier from the GitHub archive link, switch to the PyPI version once:</p>
+      <div class="cmd"><code>uv tool install --force tgsweep</code><button type="button" class="copy">Copy</button></div>
     </div>
     <div class="maintain-row">
       <h3>Sign out later</h3>
@@ -371,7 +373,7 @@ You are signed out on this computer.</pre></div>
       <p data-os="mac">Everything is in the folder <samp>~/Library/Application Support/tgsweep</samp>.</p>
       <p data-os="linux">Everything is in the folder <samp>~/.local/share/tgsweep</samp>.</p>
       <h3>Check it yourself</h3>
-      <p>The code is open: <a href="https://github.com/umbrella-at/tgsweep">github.com/umbrella-at/tgsweep</a>. If you do not read code, give the link to any AI chat and ask what the program sends and what it deletes. The repository has tests that keep the program from gaining extra abilities: writing messages, leaving groups, deleting other people’s messages.</p>
+      <p>The code is open: <a href="https://github.com/umbrella-at/tgsweep">github.com/umbrella-at/tgsweep</a>. If you do not read code, give the link to any AI chat and ask what the program sends and what it deletes. The repository has tests that keep the program from gaining extra abilities: writing messages, leaving groups, deleting other people’s messages. PyPI shows which repository and which build each version came from.</p>
     </div>
   </div>
 </section>
@@ -412,7 +414,7 @@ You are signed out on this computer.</pre></div>
   </details>
   <details>
     <summary>Why a terminal and not a regular app?</summary>
-    <p>The program is small, and this way it is easier to check: it installs with one command straight from the open code, without an installer with who knows what inside.</p>
+    <p>The program is small, and this way it is easier to check: it installs with one command from PyPI, where an open build script on GitHub publishes it. No installer with who knows what inside.</p>
   </details>
   <details>
     <summary>The program speaks Russian</summary>
