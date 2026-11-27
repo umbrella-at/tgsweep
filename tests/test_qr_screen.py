@@ -35,8 +35,15 @@ def code_lines(n: int) -> list[str]:
 
 
 def wrapped(text: str, columns: int) -> list[str]:
-    """The rows a terminal this wide splits the line into (the texts here are one column per character)."""
-    return [text[i:i + columns].rstrip() for i in range(0, len(text), columns)]
+    """The rows the program breaks the line into on a terminal this wide: between words, one column
+    short of the edge (the texts here are one column per character and have no unbreakable pieces)."""
+    rows = [""]
+    for word in text.split(" "):
+        if rows[-1] and len(rows[-1]) + 1 + len(word) > columns - 1:
+            rows.append(word)
+        else:
+            rows[-1] = f"{rows[-1]} {word}" if rows[-1] else word
+    return rows
 
 
 def has_rows(rows: list[str], part: list[str]) -> bool:

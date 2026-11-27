@@ -138,9 +138,10 @@
   function answer() {
     const chosen = data.filter(isOn);
     answered = true;
-    let done = "done";
+    // What the program shows after the answer: nothing, [the one chat], or how many.
+    let done = T.picked_nothing;
     if (chosen.length === 1) done = "[" + chosen[0].label + "]";
-    else if (chosen.length > 1) done = "done (" + chosen.length + " selections)";
+    else if (chosen.length > 1) done = fill(T.picked_many, { count: chosen.length });
     instr.innerHTML = '<span class="ans">' + esc(done) + "</span>";
     list.hidden = true;
     if (!chosen.length) {

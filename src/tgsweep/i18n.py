@@ -216,7 +216,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "ru": "Отсканируйте код телефоном: Telegram, Настройки, Устройства, «Подключить устройство». "
         "Код меняется примерно раз в 30 секунд, новый появится здесь сам.",
         "en": "Scan the code with your phone: Telegram > Settings > Devices > Link Desktop Device. "
-        "The code changes about every 30 seconds, the new one appears here by itself.",
+        "The code changes about every 30 seconds, a new one appears here.",
     },
     "way_sms": {"ru": "по SMS", "en": "by SMS"},
     "way_call": {"ru": "звонком", "en": "by a call"},
@@ -298,6 +298,11 @@ TEXTS: dict[str, dict[str, str]] = {
         "ru": "(стрелки двигают, пробел отмечает, a отмечает все, Enter продолжает)",
         "en": "(arrows move, space selects, a selects all, Enter continues)",
     },
+    # What stands after an answered question, in place of questionary's English.
+    "answer_yes": {"ru": "Да", "en": "Yes"},
+    "answer_no": {"ru": "Нет", "en": "No"},
+    "picked_nothing": {"ru": "ничего", "en": "nothing"},
+    "picked_many": {"ru": "отмечено: {count}", "en": "{count} selected"},
 }
 
 # Word forms after a number: ru one, few, many (1 сообщение, 2 сообщения, 5 сообщений); en one, other.

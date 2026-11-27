@@ -172,7 +172,7 @@ def main(argv: list[str] | None = None) -> int:
         home = Home(default_root())
         client = build_world(lang, datetime.now(timezone.utc))
         cli.sweep = paced_sweep
-        ui = cli.terminal_ui()
+        ui = cli.terminal_ui(home)
         args = argparse.Namespace(code=False, logout=False)
         try:
             return asyncio.run(cli.run(args, home, ui, client_factory=factory_for(client)))

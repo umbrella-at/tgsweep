@@ -330,6 +330,8 @@ def test_site_mockups_match_program(lang):
     assert missing == []
     stale = [line for line in lines if text.count(line[:20]) != text.count(line)]
     assert stale == []
+    # The answer to the last question, in the page's language as the program gives it.
+    assert f"? {i18n.t('ask_sign_out')} {i18n.t('answer_yes')}\n" in text
 
 
 class Shape(HTMLParser):
@@ -461,7 +463,7 @@ def test_demo_words_match_program():
     for lang, data in words.items():
         for key in ("message", "reaction", "chat_in", "minute"):
             assert data[key] == list(i18n.PLURALS[key][lang]), (lang, key)
-        for key in ("nothing", "none_picked", "will_delete", "confirm_number"):
+        for key in ("nothing", "none_picked", "will_delete", "confirm_number", "picked_nothing", "picked_many"):
             assert data[key] == i18n.TEXTS[key][lang], (lang, key)
     assert CYRILLIC.findall(json.dumps(words["en"], ensure_ascii=False)) == []
     # app.js asks for exactly these words: a missing one would break the demo without an error.

@@ -175,12 +175,14 @@ def enable_ansi() -> bool:
     return bool(kernel32.SetConsoleMode(handle, mode.value | 0x0004))  # ENABLE_VIRTUAL_TERMINAL_PROCESSING
 
 
-def terminal_ui():
-    """The UI of the command: escape codes only for a terminal that understands them."""
+def terminal_ui(home: Home | None = None):
+    """The UI of the command: escape codes only for a terminal that understands them. A line never
+    breaks inside the program's folder or a path in it."""
     from .ui import TerminalUI
 
     isatty = getattr(sys.stdout, "isatty", None)
-    return TerminalUI(ansi=enable_ansi() and bool(isatty and isatty()))
+    whole = (str(home.root),) if home else ()
+    return TerminalUI(ansi=enable_ansi() and bool(isatty and isatty()), whole=whole)
 
 
 def quiet_library_logs(ui) -> None:
@@ -249,7 +251,7 @@ def main(argv: list[str] | None = None) -> int:
     if not sys.stdin.isatty():
         print(t("needs_terminal"), file=sys.stderr)
         return 2
-    ui = terminal_ui()
+    ui = terminal_ui(home)
     quiet_library_logs(ui)
     try:
         return asyncio.run(run(args, home, ui))
