@@ -577,13 +577,39 @@ def test_every_imported_library_is_a_direct_dependency():
     assert used <= declared, used - declared
 
 
+def changelog_version(text: str) -> str:
+    """The version of the first numbered section. Only [Unreleased] may stand above it."""
+    headings = re.findall(r"^## (.*)$", text, flags=re.M)
+    if headings[:1] == ["[Unreleased]"]:
+        headings = headings[1:]
+    versions = [re.fullmatch(r"\[(\d+\.\d+\.\d+)\] - \d{4}-\d{2}-\d{2}", h) for h in headings]
+    assert versions and all(versions), headings
+    return versions[0].group(1)
+
+
 def test_one_version_in_pyproject_the_package_and_the_changelog():
     version = project()["version"]
     assert re.fullmatch(r"\d+\.\d+\.\d+", version)
     assert tgsweep.__version__ == version
-    changelog = (REPO / "CHANGELOG.md").read_text(encoding="utf-8")
-    top = re.search(r"^## (.*)$", changelog, flags=re.M).group(1)
-    assert re.fullmatch(r"\[(\d+\.\d+\.\d+)\] - \d{4}-\d{2}-\d{2}", top).group(1) == version, top
+    assert changelog_version((REPO / "CHANGELOG.md").read_text(encoding="utf-8")) == version
+
+
+@pytest.mark.parametrize("top", ["", "## [Unreleased]\n\n- coming\n\n", "## [Unreleased]\n\n"],
+                         ids=["no unreleased", "unreleased", "empty unreleased"])
+def test_the_changelog_version_is_the_first_numbered_section(top):
+    text = f"# Changelog\n\n{top}## [1.2.3] - 2026-01-02\n\n- one\n\n## [1.2.2] - 2026-01-01\n\n- two\n"
+    assert changelog_version(text) == "1.2.3"
+
+
+@pytest.mark.parametrize("text", [
+    "## [1.2.3] - 2026-01-02\n\n## [Unreleased]\n",
+    "## [Unreleased]\n\n## [Unreleased]\n\n## [1.2.3] - 2026-01-02\n",
+    "## [Unreleased]\n\n## Notes\n\n## [1.2.3] - 2026-01-02\n",
+    "## [Unreleased]\n\n- only this\n",
+], ids=["unreleased below", "two unreleased", "other heading", "nothing numbered"])
+def test_the_changelog_takes_only_unreleased_and_numbered_sections(text):
+    with pytest.raises(AssertionError):
+        changelog_version(text)
 
 
 @pytest.mark.parametrize("readme", READMES, ids=lambda p: p.name)

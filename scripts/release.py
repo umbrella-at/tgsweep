@@ -1,6 +1,8 @@
 """Release checks, run by .github/workflows/release.yml and by tests/test_release.py.
 
     python3 scripts/release.py check v0.3.0        the tag, pyproject.toml, __version__ and CHANGELOG.md agree
+                                                   (the first CHANGELOG.md section with a number; an
+                                                   [Unreleased] section may stand above it)
     python3 scripts/release.py notes 0.3.0         the CHANGELOG.md section of a version, for the GitHub Release
     python3 scripts/release.py wheel dist/*.whl    the wheel holds only the tgsweep package and its metadata
 
@@ -20,6 +22,7 @@ ROOT = Path(__file__).resolve().parent.parent
 PACKAGE = "tgsweep"
 # A version section of CHANGELOG.md, as Keep a Changelog writes it: ## [0.3.0] - 2026-11-27
 SECTION = re.compile(r"^## \[(?P<version>[^\]]+)\] - (?P<date>\d{4}-\d{2}-\d{2})$")
+UNRELEASED = "## [Unreleased]"  # changes since the last release, allowed only as the first section
 LINK = re.compile(r"^\[[^\]]+\]: ")  # the comparison links at the end of the file
 
 
@@ -40,13 +43,19 @@ def package_version(root: Path = ROOT) -> str:
 
 
 def changelog_sections(root: Path = ROOT) -> list[tuple[str, str]]:
-    """(version, text) of every section from the top. Any other second-level heading is an error."""
+    """(version, text) of every numbered section from the top. An [Unreleased] section may come first
+    and is left out; any other second-level heading, or [Unreleased] further down, is an error."""
     sections: list[tuple[str, list[str]]] = []
+    headings = 0
     for line in (root / "CHANGELOG.md").read_text(encoding="utf-8").splitlines():
         if line.startswith("## "):
+            headings += 1
+            if line == UNRELEASED and headings == 1:
+                continue  # its text goes nowhere: no section is open yet
             match = SECTION.match(line)
             if not match:
-                raise ReleaseError(f"CHANGELOG.md: not a version heading: {line!r}")
+                where = " ([Unreleased] goes only on top)" if line == UNRELEASED else ""
+                raise ReleaseError(f"CHANGELOG.md: not a version heading: {line!r}{where}")
             sections.append((match["version"], []))
         elif sections and not LINK.match(line):
             sections[-1][1].append(line)
@@ -66,7 +75,7 @@ def check(tag: str, root: Path = ROOT) -> str:
     sections = changelog_sections(root)
     if not sections or sections[0][0] != version:
         top = sections[0][0] if sections else "none"
-        problems.append(f"the top section of CHANGELOG.md is {top}")
+        problems.append(f"the first numbered section of CHANGELOG.md is {top}")
     elif not sections[0][1]:
         problems.append(f"the CHANGELOG.md section for {version} is empty")
     if problems:

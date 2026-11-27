@@ -2,6 +2,16 @@
 
 All notable changes to tgsweep are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Python 3.15: the tests run on it on Linux, macOS and Windows, and the package lists it. uv 0.13 installs Python 3.15 for new users.
+
+### Changed
+
+- The package description on PyPI reads "Delete your own messages, comments and reactions in the Telegram groups you select". The old one, "from the chats you pick", sounded as if private chats were touched and left out comments and reactions.
+
 ## [0.3.0] - 2026-11-27
 
 The first release on PyPI. Version 0.2.0 was never released: builds with that number were installed from the archive of the main branch, and their changes are listed here.
@@ -42,6 +52,7 @@ The first release on PyPI. Version 0.2.0 was never released: builds with that nu
 - Nothing is deleted until you select chats and type the number of messages and reactions to delete.
 - The deletion log `logs/actions.jsonl` holds chat and message numbers, no texts.
 
+[Unreleased]: https://github.com/umbrella-at/tgsweep/compare/v0.3.0...HEAD
 [0.3.0]: https://github.com/umbrella-at/tgsweep/compare/v0.1.1...v0.3.0
 [0.1.1]: https://github.com/umbrella-at/tgsweep/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/umbrella-at/tgsweep/tree/v0.1.0

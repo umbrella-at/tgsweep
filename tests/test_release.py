@@ -9,6 +9,7 @@ from __future__ import annotations
 import importlib.util
 import re
 import shutil
+import tomllib
 import zipfile
 from pathlib import Path
 
@@ -104,12 +105,26 @@ def test_no_template_expansion_inside_shell_commands():
 # --- scripts/release.py ---------------------------------------------------------
 
 
-@pytest.fixture
-def repo(tmp_path):
-    """A copy of the files the check reads."""
+UNRELEASED = "## [Unreleased]\n\n### Added\n\n- Something still coming.\n\n"
+
+
+def set_unreleased(changelog: Path, present: bool) -> None:
+    """Puts an [Unreleased] section above the first numbered one, or takes it away."""
+    text = changelog.read_text(encoding="utf-8")
+    first = re.search(r"^## ", text, flags=re.M).start()
+    numbered = re.search(r"^## \[\d", text, flags=re.M).start()
+    changelog.write_text(text[:first] + (UNRELEASED if present else "") + text[numbered:], encoding="utf-8")
+
+
+@pytest.fixture(params=[True, False], ids=["with unreleased", "without unreleased"])
+def repo(tmp_path, request):
+    """A copy of the files the check reads, with and without an [Unreleased] section on top."""
     for rel in ("pyproject.toml", "CHANGELOG.md", "src/tgsweep/__init__.py"):
         (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(REPO / rel, tmp_path / rel)
+    set_unreleased(tmp_path / "CHANGELOG.md", request.param)
+    text = (tmp_path / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert ("## [Unreleased]" in text) is request.param
     return tmp_path
 
 
@@ -117,6 +132,10 @@ def edit(path: Path, old: str, new: str) -> None:
     text = path.read_text(encoding="utf-8")
     assert text.count(old) == 1, old
     path.write_text(text.replace(old, new), encoding="utf-8")
+
+
+def numbered_heading(repo: Path) -> str:
+    return re.search(r"^## \[\d.*$", (repo / "CHANGELOG.md").read_text(encoding="utf-8"), flags=re.M).group()
 
 
 def test_the_check_passes_for_the_tag_of_this_version(repo):
@@ -138,14 +157,10 @@ def test_the_check_fails_on_a_tag_of_another_version(repo):
         release.check("v9.9.9", repo)
 
 
-def top_heading(repo: Path) -> str:
-    return re.search(r"^## .*$", (repo / "CHANGELOG.md").read_text(encoding="utf-8"), flags=re.M).group()
-
-
 @pytest.mark.parametrize("rel, line, problem", [
     ("pyproject.toml", 'version = "{v}"', "pyproject.toml has version 9.9.8"),
     ("src/tgsweep/__init__.py", '__version__ = "{v}"', "src/tgsweep/__init__.py has __version__ 9.9.8"),
-    ("CHANGELOG.md", "## [{v}] - ", "the top section of CHANGELOG.md is 9.9.8"),
+    ("CHANGELOG.md", "## [{v}] - ", "the first numbered section of CHANGELOG.md is 9.9.8"),
 ], ids=["pyproject", "package", "changelog"])
 def test_the_check_names_the_file_that_disagrees(repo, rel, line, problem):
     release = load_script()
@@ -157,40 +172,60 @@ def test_the_check_names_the_file_that_disagrees(repo, rel, line, problem):
     assert problem in str(caught.value)
 
 
+def test_a_release_tagged_before_its_section_is_numbered_stops(repo):
+    # The version is raised, but its changes still sit under [Unreleased] (or nowhere): the first
+    # numbered section is the previous release.
+    release = load_script()
+    old = release.project_version(repo)
+    edit(repo / "pyproject.toml", f'version = "{old}"', 'version = "9.9.8"')
+    edit(repo / "src/tgsweep/__init__.py", f'__version__ = "{old}"', '__version__ = "9.9.8"')
+    with pytest.raises(release.ReleaseError, match=f"the first numbered section of CHANGELOG.md is {re.escape(old)}$"):
+        release.check("v9.9.8", repo)
+
+
 def test_the_check_fails_on_an_empty_changelog_section(repo):
     release = load_script()
     version = release.project_version(repo)
     changelog = repo / "CHANGELOG.md"
     text = changelog.read_text(encoding="utf-8")
-    heading = top_heading(repo)
+    heading = numbered_heading(repo)
     start = text.index(heading) + len(heading)
     changelog.write_text(text[:start] + "\n\n" + text[text.index("\n## [", start) + 1:], encoding="utf-8")
     with pytest.raises(release.ReleaseError, match=f"section for {re.escape(version)} is empty"):
         release.check(f"v{version}", repo)
 
 
-def test_an_unreleased_section_on_top_stops_the_check(repo):
+def test_unreleased_further_down_stops_the_check(repo):
     release = load_script()
-    heading = top_heading(repo)
-    edit(repo / "CHANGELOG.md", heading, f"## [Unreleased]\n\n- more\n\n{heading}")
-    with pytest.raises(release.ReleaseError, match="not a version heading"):
+    text = (repo / "CHANGELOG.md").read_text(encoding="utf-8")
+    second = re.findall(r"^## \[\d.*$", text, flags=re.M)[1]
+    edit(repo / "CHANGELOG.md", second, f"## [Unreleased]\n\n{second}")
+    with pytest.raises(release.ReleaseError, match=r"goes only on top"):
         release.check(f"v{release.project_version(repo)}", repo)
 
 
-def test_the_release_notes_are_the_section_of_the_version():
+def test_another_heading_on_top_stops_the_check(repo):
     release = load_script()
-    text = (REPO / "CHANGELOG.md").read_text(encoding="utf-8")
-    version = release.project_version()
+    heading = numbered_heading(repo)
+    edit(repo / "CHANGELOG.md", heading, f"## Notes\n\n{heading}")
+    with pytest.raises(release.ReleaseError, match="not a version heading: '## Notes'"):
+        release.check(f"v{release.project_version(repo)}", repo)
+
+
+def test_the_release_notes_are_the_section_of_the_version(repo):
+    release = load_script()
+    text = (repo / "CHANGELOG.md").read_text(encoding="utf-8")
+    version = release.project_version(repo)
     start = text.index(f"## [{version}]")
     body = text[text.index("\n", start) + 1:text.index("\n## [", start)].strip()
-    notes = release.notes(version)
+    notes = release.notes(version, repo)
     assert notes == body + "\n"
-    assert "### Added" in notes and "## [" not in notes
+    assert "### Added" in notes and "## [" not in notes and "Something still coming" not in notes
     # The last section ends before the comparison links.
-    oldest = release.notes("0.1.0")
+    oldest = release.notes("0.1.0", repo)
     assert oldest.startswith("### Added") and "]: https://" not in oldest
     with pytest.raises(release.ReleaseError, match="no section for 0.0.1"):
-        release.notes("0.0.1")
+        release.notes("0.0.1", repo)
 
 
 def make_wheel(folder: Path, names: list[str], version: str = "0.3.0") -> Path:
@@ -236,3 +271,17 @@ def test_the_command_line_exits_1_with_the_reason(capsys):
     assert capsys.readouterr().out == f"releasing {version}\n"
     assert release.main(["check", "v9.9.9"]) == 1
     assert capsys.readouterr().err.startswith("release: the tag v9.9.9 releases 9.9.9, but ")
+
+
+def test_the_newest_python_of_the_package_is_tested():
+    # uv gives a newcomer the newest Python, so the newest one the package lists must run in CI and
+    # in the release tests. The matrix is the one the brief set: 4 versions on 3 systems, 12 jobs.
+    project = tomllib.loads((REPO / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+    listed = [c.rsplit(" :: ", 1)[1] for c in project["classifiers"]
+              if re.fullmatch(r"Programming Language :: Python :: 3\.\d+", c)]
+    assert listed == ["3.11", "3.12", "3.13", "3.14", "3.15"]
+    matrix = workflow(WORKFLOWS / "tests.yml")["jobs"]["test"]["strategy"]["matrix"]
+    assert matrix == {"os": ["ubuntu-latest", "macos-latest", "windows-latest"], "python": ["3.11", "3.13", "3.14", "3.15"]}
+    assert listed[-1] in matrix["python"] and listed[0] in matrix["python"]
+    runs = [step.get("run", "") for step in workflow()["jobs"]["test"]["steps"]]
+    assert f"uv sync --locked --python {listed[-1]}" in runs
