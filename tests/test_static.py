@@ -622,3 +622,64 @@ def test_readme_links_are_absolute(readme):
     assert len(targets) >= 8, targets
     relative = [t for t in targets if not t.startswith(("https://", "http://", "mailto:"))]
     assert relative == []
+
+
+# --- the page in the visitor's language (site/lang.js) ---------------------------
+
+# The CSP as it stands: lang.js is a file of the site, so 'self' lets it in and nothing changes.
+CSP = ("default-src 'self'; script-src 'self' https://gc.zgo.at; connect-src 'self' https://*.goatcounter.com; "
+       "img-src 'self' data: https://*.goatcounter.com; style-src 'self'; font-src 'self'; object-src 'none'; "
+       "base-uri 'none'; form-action 'none'")
+LANG_SCRIPT = REPO / "site" / "lang.js"
+
+
+def test_the_csp_stays_as_it_was():
+    caddy = (REPO / "deploy" / "tgsweep.caddy").read_text(encoding="utf-8")
+    assert re.findall(r'^\s*Content-Security-Policy "([^"]+)"$', caddy, re.M) == [CSP + "; frame-ancestors 'none'"]
+    for lang in PAGES:
+        assert re.findall(r'<meta http-equiv="Content-Security-Policy" content="([^"]+)">', page(lang)) == [CSP], lang
+
+
+@pytest.mark.parametrize("lang", PAGES)
+def test_the_language_script_runs_before_the_page_is_drawn(lang):
+    # In <head>, blocking (no defer, no async), ahead of the stylesheet: the switch happens before any paint.
+    assert LANG_SCRIPT.is_file()
+    text = page(lang)
+    head = text[:text.index("</head>")]
+    tags = [tag for tag in re.findall(r"<script\b[^>]*>", text) if "lang.js" in tag]
+    assert tags == ['<script src="/lang.js">'], lang
+    at = head.index('<script src="/lang.js"></script>')
+    assert head.index('<meta http-equiv="Content-Security-Policy"') < at < head.index('<link rel="stylesheet"')
+    assert at < head.index('<link rel="preload"')  # no font is fetched for a page about to be left
+
+
+ROBOT_AGENTS = [
+    "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+    "TelegramBot (like TwitterBot)",
+    "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
+    "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
+    "Mozilla/5.0 (compatible; Yahoo! Slurp; http://help.yahoo.com/help/us/ysearch/slurp)",
+]
+PEOPLE_AGENTS = [
+    # The Telegram in-app browser on Android: a person, who needs the right language most.
+    "Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/AP2A.240805.005; wv) AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Version/4.0 Chrome/131.0.6778.135 Mobile Safari/537.36 Telegram-Android/11.5.3 (Google Pixel 8; Android 14; SDK 34; HIGH)",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Mobile/15E148 Safari/604.1",
+]
+
+
+def test_the_language_script_leaves_robots_where_they_came():
+    script = LANG_SCRIPT.read_text(encoding="utf-8")
+    pattern = re.search(r"const ROBOTS = /(.+)/i;", script).group(1)
+    assert pattern == "bot|crawl|spider|slurp|facebookexternalhit"
+    assert [ua for ua in ROBOT_AGENTS if not re.search(pattern, ua, re.I)] == []
+    assert [ua for ua in PEOPLE_AGENTS if re.search(pattern, ua, re.I)] == []
+
+
+def test_the_language_script_remembers_without_cookies():
+    script = LANG_SCRIPT.read_text(encoding="utf-8")
+    assert 'const KEY = "tgsweep-lang";' in script
+    assert "document.cookie" not in script
+    assert "location.replace(" in script and "location.assign" not in script and "location.href =" not in script
+    assert CYRILLIC.findall(script) == []
