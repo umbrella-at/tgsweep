@@ -4,9 +4,13 @@ from __future__ import annotations
 
 import ast
 import html
+import json
 import re
+from collections import Counter
+from html.parser import HTMLParser
 from pathlib import Path
 
+import pytest
 from telethon import TelegramClient
 
 import tgsweep
@@ -171,17 +175,28 @@ def test_no_dynamic_attribute_access():
         assert "__import__" not in source and "importlib" not in source
 
 
+# The website: the Russian page at / and the English one at /en/, the same markup with different words.
+PAGES = {"ru": REPO / "site" / "index.html", "en": REPO / "site" / "en" / "index.html"}
+URLS = {"ru": "https://tgsweep.atworks.dev/", "en": "https://tgsweep.atworks.dev/en/"}
+READMES = [REPO / "README.md", REPO / "README.ru.md"]
+CYRILLIC = re.compile(r"[А-Яа-яЁё]")
+
+
+def page(lang: str) -> str:
+    return PAGES[lang].read_text(encoding="utf-8")
+
+
 def site_files() -> list[Path]:
-    files = sorted(p for p in (REPO / "site").glob("*") if p.suffix in {".html", ".js", ".css"})
-    assert REPO / "site" / "index.html" in files, "the website was not found"
+    files = sorted(p for p in (REPO / "site").rglob("*") if p.suffix in {".html", ".js", ".css"})
+    assert set(PAGES.values()) <= set(files), "the website was not found"
     return files
 
 
 def test_no_dashes_in_human_texts():
     targets = list(source_files().values())
-    targets += [p for p in [REPO / "README.md"] if p.is_file()]
-    assert len(targets) > 12, "the README was not found"
-    targets += site_files() + sorted((REPO / "docs").glob("*.md"))
+    targets += sorted(REPO.glob("*.md"))  # every README, whatever its language
+    assert set(READMES) <= set(targets), "a README was not found"
+    targets += site_files() + sorted((REPO / "docs").glob("*.md")) + sorted((REPO / "scripts").glob("*.html"))
     for path in targets:
         text = path.read_text(encoding="utf-8")
         assert "—" not in text and "–" not in text, path
@@ -197,52 +212,205 @@ INSTALL_COMMANDS = {
 }
 
 
+def page_commands(text: str) -> list[str]:
+    """The commands to paste, in page order: <code> without a class (inline mentions have one)."""
+    return [html.unescape(re.sub(r"<[^>]+>", "", c)) for c in re.findall(r"<code>(.*?)</code>", text)]
+
+
 def test_site_and_readme_install_the_same_way():
-    readme = (REPO / "README.md").read_text(encoding="utf-8")
-    page = (REPO / "site" / "index.html").read_text(encoding="utf-8")
-    commands = {html.unescape(re.sub(r"<[^>]+>", "", c)) for c in re.findall(r"<code>(.*?)</code>", page)}
-    for command in INSTALL_COMMANDS:
-        assert command in readme, command
-        assert command in commands, command
-    installs = {c for c in commands if c.startswith("uv tool install")}
-    assert installs == {
-        "uv tool install https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip",
-        "uv tool install --reinstall https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip",
-    }
-    assert not [c for c in commands if c.startswith("uv tool upgrade")]
-    assert "git+" not in readme and "git+" not in page
+    for readme_path in READMES:
+        readme = readme_path.read_text(encoding="utf-8")
+        for command in INSTALL_COMMANDS:
+            assert command in readme, (readme_path.name, command)
+        assert "git+" not in readme
+    for lang in PAGES:
+        commands = set(page_commands(page(lang)))
+        for command in INSTALL_COMMANDS:
+            assert command in commands, (lang, command)
+        installs = {c for c in commands if c.startswith("uv tool install")}
+        assert installs == {
+            "uv tool install https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip",
+            "uv tool install --reinstall https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip",
+        }
+        assert not [c for c in commands if c.startswith("uv tool upgrade")]
+        assert "git+" not in page(lang)
+    # Both pages give the same commands in the same places.
+    assert len(page_commands(page("ru"))) > 10
+    assert page_commands(page("en")) == page_commands(page("ru"))
 
 
 def test_caddy_site_matches_the_page():
     # Both CSPs apply in the browser, so a source added to only one of them is still blocked.
-    page = (REPO / "site" / "index.html").read_text(encoding="utf-8")
     caddy = (REPO / "deploy" / "tgsweep.caddy").read_text(encoding="utf-8")
-    meta = re.findall(r'<meta http-equiv="Content-Security-Policy" content="([^"]+)">', page)
     header = re.findall(r'^\s*Content-Security-Policy "([^"]+)"$', caddy, re.M)
-    assert len(meta) == 1 and len(header) == 1
-    assert header[0] == meta[0] + "; frame-ancestors 'none'"
+    assert len(header) == 1
+    for lang in PAGES:
+        meta = re.findall(r'<meta http-equiv="Content-Security-Policy" content="([^"]+)">', page(lang))
+        assert len(meta) == 1, lang
+        assert header[0] == meta[0] + "; frame-ancestors 'none'", lang
     # The page promises no personal data: no access log with visitor IPs.
     directives = [line.split("#")[0].strip() for line in caddy.splitlines()]
     assert "tgsweep.atworks.dev {" in directives
     assert not [d for d in directives if d.startswith(("log", "import"))]
 
 
-def test_site_mockups_match_program():
+# The made-up account on the page mockups, in each language.
+MOCKUP = {
+    "ru": {
+        "name": "Мария (@maria_demo)",
+        "scanned": "Английский клуб",
+        "chats": ["Соседи по дому", "Книжный клуб", "Бег по утрам", "Объявления района"],
+    },
+    "en": {
+        "name": "Maria (@maria_demo)",
+        "scanned": "Spanish club",
+        "chats": ["Building neighbors", "Book club", "Morning runs", "Neighborhood notices"],
+    },
+}
+
+
+def visible_text(text: str) -> str:
+    """What a visitor reads: no tags, and no script blocks (the demo's word list is not on screen)."""
+    return html.unescape(re.sub(r"<[^>]+>", "", re.sub(r"<script\b.*?</script>", "", text, flags=re.S)))
+
+
+@pytest.mark.parametrize("lang", ["ru", "en"])
+def test_site_mockups_match_program(lang):
     # The terminal mockups on the page repeat the program's output word for word. A line can
     # appear in several mockups, so every place that starts like it must go on exactly like it.
     from tgsweep import app, cli, i18n, signin, ui
+    from tgsweep.cleanup import ApplyProgress, ScanProgress
 
-    i18n.set_lang("ru")  # the page is in Russian
-    page = (REPO / "site" / "index.html").read_text(encoding="utf-8")
-    text = html.unescape(re.sub(r"<[^>]+>", "", page))
+    i18n.set_lang(lang)
+    text = visible_text(page(lang))
     lines = [app.skip_note(reason) for reason in app.SKIP_NOTES if reason != "unsupported"]
     lines += [ui.pick_hint(), ui.choose_hint(), signin.qr_hint(), cli.login_help()]
     lines += [line.strip() for line in cli.credentials_help().splitlines()]
     assert len(lines) == 12
+    # Lines with numbers, put together by the program's own functions from the mockups' numbers.
+    demo = MOCKUP[lang]
+    counted = [
+        i18n.t("search_took", duration=app.duration(50), chats=i18n.plural(21, "chat")),
+        i18n.t("will_delete", counts=app.counts(49, 0, 4), chats=i18n.plural(2, "chat_in"),
+               minutes=i18n.plural(1, "minute")),
+        i18n.t("confirm_number", total=53),
+        i18n.t("report_done", messages=49, comments=0, reactions=4),
+        app.apply_line(ApplyProgress(done=37, total=53, chat=demo["chats"][0])),
+        app.scan_line(ScanProgress(phase="messages", chat=9, chats=21, found=60, title=demo["scanned"])),
+        i18n.t("account", name=demo["name"]),
+    ]
+    counted += [f"{title}: {app.counts(m, 0, r)}" for title, (m, r) in zip(demo["chats"], [(37, 0), (12, 4), (8, 0), (3, 2)])]
+    assert len(counted) == 11
+    lines += counted
     missing = [line for line in lines if line not in text]
     assert missing == []
     stale = [line for line in lines if text.count(line[:20]) != text.count(line)]
     assert stale == []
+
+
+class Shape(HTMLParser):
+    """The skeleton of a page: ids, steps, commands, questions, screenshots and blocks per system."""
+
+    def __init__(self, text: str):
+        super().__init__()
+        self.ids: list[str] = []
+        self.os: list[str] = []
+        self.counts: Counter[str] = Counter()
+        self.feed(text)
+
+    def handle_starttag(self, tag, attrs):
+        a = dict(attrs)
+        classes = (a.get("class") or "").split()
+        if "id" in a:
+            self.ids.append(a["id"])
+        if "data-os" in a:
+            self.os.append(a["data-os"])
+        for name in ("step", "cmd"):
+            self.counts[name] += name in classes
+        self.counts["details"] += tag == "details"
+        self.counts["figure.shot"] += tag == "figure" and "shot" in classes
+
+
+def test_pages_have_the_same_shape():
+    ru, en = Shape(page("ru")), Shape(page("en"))
+    assert ru.counts["step"] == 11 and ru.counts["details"] >= 10 and len(ru.os) > 10
+    assert sorted(en.ids) == sorted(ru.ids)
+    assert en.counts == ru.counts
+    assert en.os == ru.os
+
+
+def test_english_page_speaks_english():
+    # Only the switch to the Russian page, marked lang="ru", is in Russian.
+    text = page("en")
+    outside = re.sub(r'<(\w+)\b[^>]*\blang="ru"[^>]*>.*?</\1>', "", text, flags=re.S)
+    assert outside != text
+    assert CYRILLIC.findall(outside) == []
+    assert re.search(r'<html lang="en">', text)
+
+
+def test_pages_point_to_each_other():
+    alternates = [
+        ("ru", "https://tgsweep.atworks.dev/"),
+        ("en", "https://tgsweep.atworks.dev/en/"),
+        ("x-default", "https://tgsweep.atworks.dev/en/"),
+    ]
+    switch = {
+        "ru": '<a href="/en/" hreflang="en" lang="en">English</a>',
+        "en": '<a href="/" hreflang="ru" lang="ru">Русский</a>',
+    }
+    for lang, url in URLS.items():
+        text = page(lang)
+        assert re.findall(r'<link rel="alternate" hreflang="([^"]+)" href="([^"]+)">', text) == alternates
+        assert re.findall(r'<link rel="canonical" href="([^"]+)">', text) == [url]
+        assert re.findall(r'<meta property="og:url" content="([^"]+)">', text) == [url]
+        nav = re.findall(r'<nav aria-label="[^"]+">(.*?)</nav>', text, re.S)
+        assert len(nav) == 1
+        assert re.findall(r"<a [^>]*>[^<]*</a>", nav[0])[-1] == switch[lang], lang
+
+
+def test_english_link_preview_image_is_published():
+    meta = dict(re.findall(r'<meta property="(og:[a-z:_]+)" content="([^"]*)">', page("en")))
+    assert meta["og:image"] == "https://tgsweep.atworks.dev/og-en.png"
+    assert meta["og:locale"] == "en_US"
+    png = (REPO / "site" / "og-en.png").read_bytes()
+    assert png[:8] == b"\x89PNG\r\n\x1a\n" and png[12:16] == b"IHDR"
+    width, height = int.from_bytes(png[16:20], "big"), int.from_bytes(png[20:24], "big")
+    assert (width, height) == (1200, 630)
+    assert (meta["og:image:width"], meta["og:image:height"]) == ("1200", "630")
+    assert len(png) < 300_000
+
+
+def page_words(lang: str) -> dict:
+    text = page(lang)
+    blocks = re.findall(r'<script type="application/json" id="page-text">(.*?)</script>', text, re.S)
+    assert len(blocks) == 1, lang
+    assert text.index('id="page-text"') < text.index("data-goatcounter"), lang
+    return json.loads(blocks[0])
+
+
+def test_demo_words_match_program():
+    from tgsweep import i18n
+
+    words = {lang: page_words(lang) for lang in PAGES}
+    assert words["ru"].keys() == words["en"].keys()
+    for lang, data in words.items():
+        for key in ("message", "reaction", "chat_in", "minute"):
+            assert data[key] == list(i18n.PLURALS[key][lang]), (lang, key)
+        for key in ("nothing", "none_picked", "will_delete", "confirm_number"):
+            assert data[key] == i18n.TEXTS[key][lang], (lang, key)
+    assert CYRILLIC.findall(json.dumps(words["en"], ensure_ascii=False)) == []
+    # app.js asks for exactly these words: a missing one would break the demo without an error.
+    script = (REPO / "site" / "app.js").read_text(encoding="utf-8")
+    assert set(re.findall(r"\bT\.(\w+)", script)) == set(words["ru"])
+
+
+def test_app_script_has_no_russian_words():
+    # The words live on the pages. Only the Russian layout keys stay: the program takes о, л, ф too.
+    script = (REPO / "site" / "app.js").read_text(encoding="utf-8")
+    start = script.index('list.addEventListener("keydown"')
+    end = script.index("});", start)
+    assert CYRILLIC.findall(script[:start] + script[end:]) == []
+    assert set(CYRILLIC.findall(script[start:end])) == {"о", "л", "ф"}
 
 
 def test_link_preview_image_is_published():

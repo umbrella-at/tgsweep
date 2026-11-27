@@ -5,6 +5,11 @@
   const live = document.getElementById("live");
   const say = (text) => { if (live) { live.textContent = ""; live.textContent = text; } };
 
+  // The page's own words for the demo and the copy buttons: a JSON block, so one script serves every language.
+  const source = document.getElementById("page-text");
+  const T = source ? JSON.parse(source.textContent) : {};
+  const fill = (text, values) => text.replace(/\{(\w+)\}/g, (all, key) => (key in values ? String(values[key]) : all));
+
   // Which computer the steps are for: the visitor's own by default, remembered once chosen.
   const OS_KEY = "tgsweep-os";
   function guessOs() {
@@ -46,24 +51,25 @@
     if (!ok) throw new Error("copy refused");
   }
   document.querySelectorAll(".cmd .copy").forEach((button) => {
+    const label = button.textContent;
     button.addEventListener("click", async () => {
       const code = button.parentElement.querySelector("code");
       try {
         await copyText(code.textContent);
-        button.textContent = "Скопировано";
+        button.textContent = T.copied;
         button.classList.add("done");
-        say("Команда скопирована");
+        say(T.copied_say);
       } catch (e) {
         const range = document.createRange();
         range.selectNodeContents(code);
         const sel = window.getSelection();
         sel.removeAllRanges();
         sel.addRange(range);
-        button.textContent = "Выделено";
-        say("Скопировать не вышло, команда выделена: нажмите Ctrl+C или Cmd+C");
+        button.textContent = T.selected;
+        say(T.copy_failed_say);
       }
       clearTimeout(button._t);
-      button._t = setTimeout(() => { button.textContent = "Копировать"; button.classList.remove("done"); }, 2200);
+      button._t = setTimeout(() => { button.textContent = label; button.classList.remove("done"); }, 2200);
     });
   });
 
@@ -80,17 +86,20 @@
   let pointer = 0;
   let answered = false;
 
-  function plural(n, one, few, many) {
-    let word = many;
-    if (n % 10 === 1 && n % 100 !== 11) word = one;
-    else if (n % 10 >= 2 && n % 10 <= 4 && !(n % 100 >= 12 && n % 100 <= 14)) word = few;
+  // Word forms after a number, as in the program: ru one, few, many; en one, other.
+  function plural(n, forms) {
+    let word;
+    if (root.lang === "en") word = n === 1 ? forms[0] : forms[1];
+    else if (n % 10 === 1 && n % 100 !== 11) word = forms[0];
+    else if (n % 10 >= 2 && n % 10 <= 4 && !(n % 100 >= 12 && n % 100 <= 14)) word = forms[1];
+    else word = forms[2];
     return n + " " + word;
   }
   function counts(messages, reactions) {
     const parts = [];
-    if (messages) parts.push(plural(messages, "сообщение", "сообщения", "сообщений"));
-    if (reactions) parts.push(plural(reactions, "реакция", "реакции", "реакций"));
-    return parts.join(", ") || "ничего";
+    if (messages) parts.push(plural(messages, T.message));
+    if (reactions) parts.push(plural(reactions, T.reaction));
+    return parts.join(", ") || T.nothing;
   }
   const PAUSE_S = 4;
   const CHUNK = 100;
@@ -135,17 +144,21 @@
     instr.innerHTML = '<span class="ans">' + esc(done) + "</span>";
     list.hidden = true;
     if (!chosen.length) {
-      after.innerHTML = "Ни один чат не отмечен, ничего не удалено.";
-      hint.textContent = "Так программа и поступит: без отмеченных чатов она ничего не трогает.";
+      after.textContent = T.none_picked;
+      hint.textContent = T.none_picked_hint;
     } else {
       const m = chosen.reduce((s, o) => s + o.messages, 0);
       const r = chosen.reduce((s, o) => s + o.reactions, 0);
+      const plan = fill(T.will_delete, {
+        counts: counts(m, r),
+        chats: plural(chosen.length, T.chat_in),
+        minutes: plural(minutes(chosen), T.minute),
+      });
       after.innerHTML =
-        "Будет удалено: " + esc(counts(m, r)) + " в " + plural(chosen.length, "чате", "чатах", "чатах") +
-        ". Вернуть их будет нельзя. Это займёт примерно " + plural(minutes(chosen), "минуту", "минуты", "минут") + ".\n" +
-        '<span class="q">?</span> <span class="b">Чтобы подтвердить, введите число ' + (m + r) + ":</span> " +
+        esc(plan) + "\n" +
+        '<span class="q">?</span> <span class="b">' + esc(fill(T.confirm_number, { total: m + r })) + "</span> " +
         '<span class="cur demo-blink" aria-hidden="true"></span>';
-      hint.textContent = "Дальше в настоящей программе вы бы ввели это число, и она начала бы удалять. Здесь демонстрация заканчивается.";
+      hint.textContent = T.demo_end_hint;
     }
     after.hidden = false;
     reset.hidden = false;

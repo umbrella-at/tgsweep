@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://gc.zgo.at; connect-src 'self' https://*.goatcounter.com; img-src 'self' data: https://*.goatcounter.com; style-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>tgsweep: delete your own messages from Telegram groups</title>
+<meta name="description" content="Free open source program. Finds your messages, comments and reactions in Telegram groups and deletes them in the chats you select. Everything runs on your computer.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#E3EAE4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F1914" media="(prefers-color-scheme: dark)">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://tgsweep.atworks.dev/en/">
+<meta property="og:title" content="tgsweep: delete your own messages from Telegram groups">
+<meta property="og:description" content="A desktop program that finds your messages in Telegram groups and deletes them in the chats you select. Open source.">
+<meta property="og:site_name" content="tgsweep">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://tgsweep.atworks.dev/og-en.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Delete your old messages from Telegram groups: the program window with chats selected for deletion">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://tgsweep.atworks.dev/en/">
+<link rel="alternate" hreflang="ru" href="https://tgsweep.atworks.dev/">
+<link rel="alternate" hreflang="en" href="https://tgsweep.atworks.dev/en/">
+<link rel="alternate" hreflang="x-default" href="https://tgsweep.atworks.dev/en/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/golos-text.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/style.css">
+<script src="/app.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#install">Skip to instructions</a>
+
+<header class="top wrap">
+  <a class="brand" href="./">
+    <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="currentColor"/><circle cx="11" cy="16" r="4.5" class="mark-full"/><circle cx="22" cy="16" r="3.6" class="mark-ring"/></svg>
+    tgsweep
+  </a>
+  <nav aria-label="Sections">
+    <a href="#install">Install</a>
+    <a href="#safety">Safety</a>
+    <a href="#faq">FAQ</a>
+    <a href="https://github.com/umbrella-at/tgsweep">GitHub</a>
+    <a href="/" hreflang="ru" lang="ru">Русский</a>
+  </nav>
+</header>
+
+<main>
+<section class="hero wrap">
+  <div class="hero-text">
+    <h1>Delete your old messages from&nbsp;Telegram groups</h1>
+    <p class="lead">tgsweep finds your messages, comments on posts and reactions in groups. You select the chats, and the program deletes only what is yours.</p>
+    <p class="promise">Everything runs on your computer: the program talks only to Telegram and sends nothing anywhere else.</p>
+    <div class="actions">
+      <a class="button" href="#install">How to install</a>
+      <a class="button quiet" href="https://github.com/umbrella-at/tgsweep">Source code</a>
+    </div>
+    <p class="facts">Free and open source. For Windows, macOS and Linux.</p>
+  </div>
+
+  <figure class="hero-demo">
+    <div class="term hero-term">
+      <div class="term-bar" aria-hidden="true">tgsweep</div>
+      <div class="term-body">
+<pre class="lines"><span class="q">?</span><span class="b"> Which of your messages to delete? </span><span class="ans">Older than 7 days</span>
+Looking for your messages in groups and your comments on posts. In large chats this can take a few minutes.
+Search took 50 s, 21 chats checked.
+Left alone:
+  private chats and bots (never opened): 3
+  chats you created (skipped so your own group is not emptied): 1
+  channels (delete your own posts in Telegram itself, comments on posts are searched separately): 1
+<span id="demo-question"><span class="q">?</span><span class="b"> Select the chats to delete your messages from: </span><span id="demo-instr">(arrows move, space selects, a selects all, Enter continues)</span></span></pre>
+<div id="demo-list" class="opts" role="listbox" tabindex="0" aria-multiselectable="true" aria-label="Chats to delete your messages from" aria-activedescendant="demo-0">
+<div class="opt" role="option" id="demo-0" aria-selected="false" data-messages="37" data-reactions="0"><span class="row"> <span class="ptr">»</span> <span class="lbl">○ Building neighbors: 37 messages</span></span></div>
+<div class="opt" role="option" id="demo-1" aria-selected="false" data-messages="12" data-reactions="4"><span class="row"> <span class="ptr"> </span> <span class="lbl">○ Book club: 12 messages, 4 reactions</span></span></div>
+<div class="opt" role="option" id="demo-2" aria-selected="false" data-messages="8" data-reactions="0"><span class="row"> <span class="ptr"> </span> <span class="lbl">○ Morning runs: 8 messages</span></span></div>
+<div class="opt" role="option" id="demo-3" aria-selected="false" data-messages="3" data-reactions="2"><span class="row"> <span class="ptr"> </span> <span class="lbl">○ Neighborhood notices: 3 messages, 2 reactions</span></span></div>
+</div>
+<pre class="lines" id="demo-after" hidden></pre>
+      </div>
+    </div>
+    <figcaption>
+      <span id="demo-hint">Try it: arrows, space and Enter, or click a row. The chats are made up, nothing is deleted here.</span>
+      <button type="button" class="text-button" id="demo-reset" hidden>Start over</button>
+    </figcaption>
+  </figure>
+</section>
+
+<section class="install" id="install" aria-labelledby="install-title">
+  <div class="wrap">
+    <h2 id="install-title">How to install and run</h2>
+    <p class="intro">You will need a computer, a phone with Telegram and about fifteen minutes the first time. After that, one command and a QR code are enough.</p>
+
+    <fieldset class="os-switch" id="os-switch">
+      <legend>Your computer</legend>
+      <label><input type="radio" name="os" value="win"><span>Windows</span></label>
+      <label><input type="radio" name="os" value="mac"><span>macOS</span></label>
+      <label><input type="radio" name="os" value="linux"><span>Linux</span></label>
+    </fieldset>
+
+    <h3 class="phase">Once: installation</h3>
+    <ol class="steps">
+      <li class="step">
+        <span class="num" aria-hidden="true">1</span>
+        <div class="step-body">
+          <h4>Open a terminal</h4>
+          <div data-os="win">
+            <p class="os-name">Windows</p>
+            <p>Press the Windows key, type <kbd>PowerShell</kbd> and open “Windows PowerShell”. On Windows 11 the Terminal app works too.</p>
+            <p>This is a window for commands. Paste a command from this page into it with <kbd>Ctrl</kbd>+<kbd>V</kbd> or a right click, then press <kbd>Enter</kbd>.</p>
+          </div>
+          <div data-os="mac">
+            <p class="os-name">macOS</p>
+            <p>Press <kbd>Cmd</kbd>+<kbd>Space</kbd>, type <kbd>Terminal</kbd> and press <kbd>Enter</kbd>.</p>
+            <p>This is a window for commands. Paste a command from this page into it with <kbd>Cmd</kbd>+<kbd>V</kbd>, then press <kbd>Enter</kbd>.</p>
+          </div>
+          <div data-os="linux">
+            <p class="os-name">Linux</p>
+            <p>Open a terminal, on many systems it is <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd>. To paste: <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>.</p>
+          </div>
+        </div>
+      </li>
+
+      <li class="step">
+        <span class="num" aria-hidden="true">2</span>
+        <div class="step-body">
+          <h4>Install uv</h4>
+          <p>uv installs Python programs, it is made by Astral. You do not need to install Python separately: uv downloads it by itself.</p>
+          <div data-os="win">
+            <p class="os-name">Windows</p>
+            <div class="cmd"><code>powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/<wbr>uv/<wbr>install.ps1 | iex"</code><button type="button" class="copy">Copy</button></div>
+            <p class="after">At the end you will see the line <samp>everything's installed!</samp></p>
+          </div>
+          <div data-os="mac linux">
+            <p class="os-name">macOS and Linux</p>
+            <div class="cmd"><code>curl -LsSf https://astral.sh/uv/install.sh | sh</code><button type="button" class="copy">Copy</button></div>
+            <figure class="shot">
+              <div class="term"><div class="term-bar" aria-hidden="true">Terminal</div><pre class="term-body"><span class="pr">maria@MacBook ~ %</span> curl -LsSf https://astral.sh/uv/install.sh | sh
+downloading uv 0.13.10 aarch64-apple-darwin
+installing to /Users/maria/.local/bin
+  uv
+  uvx
+everything's installed!
+
+To add $HOME/.local/bin to your PATH, either restart your shell or run:
+
+    source $HOME/.local/bin/env (sh, bash, zsh)
+    source $HOME/.local/bin/env.fish (fish)</pre></div>
+              <figcaption>This is how it looks on a Mac. What matters is the end: <samp>everything's installed!</samp></figcaption>
+            </figure>
+          </div>
+        </div>
+      </li>
+
+      <li class="step">
+        <span class="num" aria-hidden="true">3</span>
+        <div class="step-body">
+          <h4>Reopen the terminal</h4>
+          <p data-os="win">Close the PowerShell window and open a new one, as in step 1. This way it finds uv.</p>
+          <p data-os="mac">Close the Terminal window and open a new one: <kbd>Cmd</kbd>+<kbd>N</kbd>. This way it finds uv.</p>
+          <p data-os="linux">Close the terminal and open a new one. This way it finds uv.</p>
+        </div>
+      </li>
+
+      <li class="step">
+        <span class="num" aria-hidden="true">4</span>
+        <div class="step-body">
+          <h4>Install tgsweep</h4>
+          <div class="cmd"><code>uv tool install https://github.com/<wbr>umbrella-at/<wbr>tgsweep/<wbr>archive/<wbr>refs/<wbr>heads/<wbr>main.zip</code><button type="button" class="copy">Copy</button></div>
+          <p>uv downloads the program from the open repository on GitHub together with everything it needs. You do not need Git for this.</p>
+          <figure class="shot">
+            <div class="term"><div class="term-bar" aria-hidden="true">Terminal</div><pre class="term-body"><span class="pr">maria@MacBook ~ %</span> uv tool install https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip
+Downloading cpython-3.14.7-macos-aarch64-none (download) (25.3MiB)
+ Downloaded cpython-3.14.7-macos-aarch64-none (download)
+Resolved 16 packages in 6.44s
+<span class="note">… 24 more lines: what was downloaded and installed</span>
+Installed 1 executable: tgsweep</pre></div>
+            <figcaption>The last line <samp>Installed 1 executable: tgsweep</samp> means everything is ready. On Windows the output is almost the same.</figcaption>
+          </figure>
+          <p class="aside">If the terminal says it does not know the uv command (<samp>command not found</samp> or “is not recognized as the name of a cmdlet”), most likely the window was not reopened. Go back to step 3, and if that does not help, repeat step 2.</p>
+        </div>
+      </li>
+    </ol>
+
+    <h3 class="phase">Once: a key for Telegram</h3>
+    <ol class="steps" start="5">
+      <li class="step">
+        <span class="num" aria-hidden="true">5</span>
+        <div class="step-body">
+          <h4>Get an api_id and api_hash</h4>
+          <p>Third-party Telegram programs need their own key. It is free, and Telegram itself issues it in a couple of minutes.</p>
+          <ol class="substeps">
+            <li>Open <a href="https://my.telegram.org">my.telegram.org</a> and enter your phone number in international format, for example <samp>+15551234567</samp>. The code comes to Telegram itself, not by SMS.</li>
+            <li>Choose <b>API development tools</b>.</li>
+            <li>Fill in the form. App title and Short name can be anything in Latin letters, for example <samp>mysweep</samp>. Platform: Desktop. Click <b>Create application</b>.</li>
+            <li>The page shows <b>App api_id</b> (a number) and <b>App api_hash</b> (32 characters). Keep the tab open, you will need them in step 6.</li>
+          </ol>
+          <p class="aside">Do not show or publish your api_hash: it is your personal key.</p>
+        </div>
+      </li>
+    </ol>
+
+    <h3 class="phase">Every time: cleanup</h3>
+    <ol class="steps" start="6">
+      <li class="step">
+        <span class="num" aria-hidden="true">6</span>
+        <div class="step-body">
+          <h4>Run tgsweep</h4>
+          <div class="cmd"><code>tgsweep</code><button type="button" class="copy">Copy</button></div>
+          <p>The first time, the program asks for the api_id and api_hash. Paste them one by one and press <kbd>Enter</kbd> after each. The api_hash stays hidden as you type, that is intended. The key is saved on this computer, and the program will not ask for it again.</p>
+          <figure class="shot">
+            <div class="term"><div class="term-bar" aria-hidden="true">Terminal</div><pre class="term-body"><span class="pr">maria@MacBook ~ %</span> tgsweep
+tgsweep needs an api_id and api_hash. Telegram issues them for free:
+  1. Open https://my.telegram.org and sign in with your phone number.
+  2. Choose API development tools and create an application, any name will do.
+  3. Copy App api_id and App api_hash here.
+They are saved only on this computer.
+api_id: 12345678
+api_hash (hidden while typing): <span class="cur" aria-hidden="true"></span></pre></div>
+          </figure>
+        </div>
+      </li>
+
+      <li class="step">
+        <span class="num" aria-hidden="true">7</span>
+        <div class="step-body">
+          <h4>Sign in with a QR code</h4>
+          <p>A QR code appears in the terminal. On your phone, open Telegram: Settings &gt; Devices &gt; Link Desktop Device, and point the camera at the code.</p>
+          <figure class="shot">
+            <div class="term"><div class="term-bar" aria-hidden="true">Terminal</div><pre class="term-body">Signing in to Telegram. tgsweep works only with groups and channels and never opens private chats.
+<svg class="qr" viewBox="0 0 41 42" role="img" aria-label="Sample QR code, it cannot be scanned" shape-rendering="crispEdges"><rect width="41" height="42" fill="#fff"/><path d="M4 4h1v1h-1zM4 5h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM8 4h1v1h-1zM9 4h1v1h-1zM10 4h1v1h-1zM10 5h1v1h-1zM12 4h1v1h-1zM12 5h1v1h-1zM13 4h1v1h-1zM14 4h1v1h-1zM15 4h1v1h-1zM15 5h1v1h-1zM17 4h1v1h-1zM18 4h1v1h-1zM19 4h1v1h-1zM20 5h1v1h-1zM21 4h1v1h-1zM22 4h1v1h-1zM23 4h1v1h-1zM24 5h1v1h-1zM25 4h1v1h-1zM26 4h1v1h-1zM27 4h1v1h-1zM28 5h1v1h-1zM30 4h1v1h-1zM30 5h1v1h-1zM31 4h1v1h-1zM32 4h1v1h-1zM33 4h1v1h-1zM34 4h1v1h-1zM35 4h1v1h-1zM36 4h1v1h-1zM36 5h1v1h-1zM4 6h1v1h-1zM4 7h1v1h-1zM6 6h1v1h-1zM6 7h1v1h-1zM7 6h1v1h-1zM7 7h1v1h-1zM8 6h1v1h-1zM8 7h1v1h-1zM10 6h1v1h-1zM10 7h1v1h-1zM13 6h1v1h-1zM15 7h1v1h-1zM16 7h1v1h-1zM17 6h1v1h-1zM18 7h1v1h-1zM19 6h1v1h-1zM20 6h1v1h-1zM21 6h1v1h-1zM22 7h1v1h-1zM23 6h1v1h-1zM24 6h1v1h-1zM25 6h1v1h-1zM26 7h1v1h-1zM27 6h1v1h-1zM28 6h1v1h-1zM30 6h1v1h-1zM30 7h1v1h-1zM32 6h1v1h-1zM32 7h1v1h-1zM33 6h1v1h-1zM33 7h1v1h-1zM34 6h1v1h-1zM34 7h1v1h-1zM36 6h1v1h-1zM36 7h1v1h-1zM4 8h1v1h-1zM4 9h1v1h-1zM6 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1zM10 8h1v1h-1zM10 9h1v1h-1zM12 8h1v1h-1zM12 9h1v1h-1zM13 9h1v1h-1zM14 9h1v1h-1zM15 8h1v1h-1zM16 8h1v1h-1zM16 9h1v1h-1zM17 8h1v1h-1zM18 8h1v1h-1zM19 8h1v1h-1zM20 9h1v1h-1zM21 8h1v1h-1zM22 8h1v1h-1zM23 8h1v1h-1zM24 9h1v1h-1zM25 8h1v1h-1zM26 8h1v1h-1zM27 8h1v1h-1zM28 9h1v1h-1zM30 8h1v1h-1zM30 9h1v1h-1zM32 8h1v1h-1zM33 8h1v1h-1zM34 8h1v1h-1zM36 8h1v1h-1zM36 9h1v1h-1zM4 10h1v1h-1zM5 10h1v1h-1zM6 10h1v1h-1zM7 10h1v1h-1zM8 10h1v1h-1zM9 10h1v1h-1zM10 10h1v1h-1zM12 10h1v1h-1zM12 11h1v1h-1zM13 11h1v1h-1zM14 10h1v1h-1zM16 10h1v1h-1zM18 10h1v1h-1zM18 11h1v1h-1zM20 10h1v1h-1zM22 10h1v1h-1zM22 11h1v1h-1zM24 10h1v1h-1zM26 10h1v1h-1zM26 11h1v1h-1zM28 10h1v1h-1zM30 10h1v1h-1zM31 10h1v1h-1zM32 10h1v1h-1zM33 10h1v1h-1zM34 10h1v1h-1zM35 10h1v1h-1zM36 10h1v1h-1zM4 12h1v1h-1zM4 13h1v1h-1zM5 12h1v1h-1zM5 13h1v1h-1zM6 12h1v1h-1zM7 13h1v1h-1zM9 12h1v1h-1zM9 13h1v1h-1zM10 12h1v1h-1zM12 12h1v1h-1zM13 12h1v1h-1zM15 12h1v1h-1zM16 12h1v1h-1zM16 13h1v1h-1zM17 12h1v1h-1zM19 12h1v1h-1zM20 12h1v1h-1zM20 13h1v1h-1zM21 12h1v1h-1zM23 12h1v1h-1zM24 12h1v1h-1zM24 13h1v1h-1zM25 12h1v1h-1zM27 12h1v1h-1zM28 12h1v1h-1zM28 13h1v1h-1zM29 12h1v1h-1zM30 12h1v1h-1zM30 13h1v1h-1zM31 12h1v1h-1zM31 13h1v1h-1zM32 12h1v1h-1zM33 13h1v1h-1zM34 13h1v1h-1zM35 12h1v1h-1zM36 12h1v1h-1zM36 13h1v1h-1zM4 14h1v1h-1zM4 15h1v1h-1zM5 14h1v1h-1zM10 14h1v1h-1zM11 15h1v1h-1zM12 14h1v1h-1zM13 14h1v1h-1zM14 14h1v1h-1zM14 15h1v1h-1zM15 15h1v1h-1zM16 14h1v1h-1zM16 15h1v1h-1zM17 14h1v1h-1zM18 14h1v1h-1zM18 15h1v1h-1zM19 14h1v1h-1zM21 14h1v1h-1zM22 14h1v1h-1zM22 15h1v1h-1zM23 14h1v1h-1zM25 14h1v1h-1zM26 14h1v1h-1zM26 15h1v1h-1zM27 14h1v1h-1zM30 15h1v1h-1zM31 15h1v1h-1zM32 14h1v1h-1zM33 15h1v1h-1zM35 14h1v1h-1zM35 15h1v1h-1zM36 14h1v1h-1zM36 15h1v1h-1zM4 16h1v1h-1zM6 16h1v1h-1zM6 17h1v1h-1zM7 17h1v1h-1zM9 16h1v1h-1zM10 16h1v1h-1zM11 16h1v1h-1zM12 16h1v1h-1zM12 17h1v1h-1zM13 16h1v1h-1zM14 16h1v1h-1zM14 17h1v1h-1zM17 16h1v1h-1zM19 16h1v1h-1zM20 16h1v1h-1zM20 17h1v1h-1zM21 16h1v1h-1zM23 16h1v1h-1zM24 16h1v1h-1zM24 17h1v1h-1zM25 16h1v1h-1zM27 16h1v1h-1zM28 16h1v1h-1zM28 17h1v1h-1zM29 16h1v1h-1zM29 17h1v1h-1zM30 16h1v1h-1zM30 17h1v1h-1zM31 16h1v1h-1zM31 17h1v1h-1zM33 16h1v1h-1zM33 17h1v1h-1zM34 17h1v1h-1zM36 17h1v1h-1zM4 18h1v1h-1zM4 19h1v1h-1zM7 18h1v1h-1zM10 18h1v1h-1zM12 19h1v1h-1zM13 18h1v1h-1zM13 19h1v1h-1zM14 18h1v1h-1zM15 18h1v1h-1zM17 18h1v1h-1zM18 18h1v1h-1zM18 19h1v1h-1zM19 18h1v1h-1zM21 18h1v1h-1zM22 18h1v1h-1zM22 19h1v1h-1zM23 18h1v1h-1zM25 18h1v1h-1zM26 18h1v1h-1zM26 19h1v1h-1zM27 18h1v1h-1zM29 19h1v1h-1zM32 19h1v1h-1zM33 18h1v1h-1zM33 19h1v1h-1zM34 18h1v1h-1zM35 18h1v1h-1zM36 18h1v1h-1zM36 19h1v1h-1zM5 20h1v1h-1zM6 21h1v1h-1zM8 20h1v1h-1zM9 21h1v1h-1zM10 20h1v1h-1zM11 21h1v1h-1zM12 21h1v1h-1zM13 20h1v1h-1zM14 20h1v1h-1zM14 21h1v1h-1zM15 20h1v1h-1zM16 20h1v1h-1zM16 21h1v1h-1zM17 20h1v1h-1zM19 20h1v1h-1zM20 20h1v1h-1zM20 21h1v1h-1zM21 20h1v1h-1zM23 20h1v1h-1zM24 20h1v1h-1zM24 21h1v1h-1zM25 20h1v1h-1zM27 20h1v1h-1zM28 20h1v1h-1zM28 21h1v1h-1zM30 20h1v1h-1zM31 20h1v1h-1zM31 21h1v1h-1zM33 20h1v1h-1zM33 21h1v1h-1zM34 21h1v1h-1zM35 20h1v1h-1zM35 21h1v1h-1zM36 21h1v1h-1zM4 23h1v1h-1zM5 22h1v1h-1zM5 23h1v1h-1zM7 22h1v1h-1zM7 23h1v1h-1zM10 22h1v1h-1zM11 22h1v1h-1zM11 23h1v1h-1zM12 23h1v1h-1zM13 22h1v1h-1zM13 23h1v1h-1zM15 23h1v1h-1zM16 22h1v1h-1zM16 23h1v1h-1zM17 22h1v1h-1zM18 22h1v1h-1zM18 23h1v1h-1zM19 22h1v1h-1zM21 22h1v1h-1zM22 22h1v1h-1zM22 23h1v1h-1zM23 22h1v1h-1zM25 22h1v1h-1zM26 22h1v1h-1zM26 23h1v1h-1zM27 22h1v1h-1zM29 22h1v1h-1zM29 23h1v1h-1zM30 22h1v1h-1zM31 23h1v1h-1zM32 23h1v1h-1zM33 23h1v1h-1zM35 22h1v1h-1zM35 23h1v1h-1zM36 22h1v1h-1zM36 23h1v1h-1zM6 24h1v1h-1zM6 25h1v1h-1zM8 25h1v1h-1zM9 24h1v1h-1zM10 24h1v1h-1zM12 24h1v1h-1zM12 25h1v1h-1zM13 24h1v1h-1zM14 24h1v1h-1zM17 24h1v1h-1zM19 24h1v1h-1zM20 24h1v1h-1zM20 25h1v1h-1zM21 24h1v1h-1zM23 24h1v1h-1zM24 24h1v1h-1zM24 25h1v1h-1zM25 24h1v1h-1zM27 24h1v1h-1zM28 24h1v1h-1zM28 25h1v1h-1zM29 25h1v1h-1zM30 24h1v1h-1zM31 24h1v1h-1zM31 25h1v1h-1zM33 24h1v1h-1zM33 25h1v1h-1zM36 24h1v1h-1zM36 25h1v1h-1zM4 26h1v1h-1zM5 26h1v1h-1zM6 26h1v1h-1zM7 26h1v1h-1zM8 26h1v1h-1zM10 26h1v1h-1zM11 26h1v1h-1zM12 26h1v1h-1zM12 27h1v1h-1zM13 26h1v1h-1zM13 27h1v1h-1zM14 27h1v1h-1zM15 26h1v1h-1zM17 26h1v1h-1zM18 26h1v1h-1zM18 27h1v1h-1zM19 26h1v1h-1zM21 26h1v1h-1zM22 26h1v1h-1zM22 27h1v1h-1zM23 26h1v1h-1zM25 26h1v1h-1zM26 26h1v1h-1zM26 27h1v1h-1zM27 26h1v1h-1zM29 26h1v1h-1zM29 27h1v1h-1zM30 26h1v1h-1zM31 26h1v1h-1zM31 27h1v1h-1zM32 26h1v1h-1zM33 27h1v1h-1zM36 26h1v1h-1zM4 28h1v1h-1zM5 28h1v1h-1zM7 28h1v1h-1zM10 28h1v1h-1zM11 28h1v1h-1zM12 29h1v1h-1zM13 29h1v1h-1zM14 28h1v1h-1zM15 28h1v1h-1zM16 28h1v1h-1zM16 29h1v1h-1zM17 28h1v1h-1zM18 28h1v1h-1zM19 28h1v1h-1zM20 28h1v1h-1zM20 29h1v1h-1zM21 28h1v1h-1zM23 28h1v1h-1zM24 28h1v1h-1zM24 29h1v1h-1zM25 28h1v1h-1zM27 28h1v1h-1zM28 28h1v1h-1zM28 29h1v1h-1zM29 28h1v1h-1zM30 28h1v1h-1zM31 28h1v1h-1zM32 28h1v1h-1zM32 29h1v1h-1zM33 28h1v1h-1zM34 29h1v1h-1zM35 29h1v1h-1zM36 28h1v1h-1zM36 29h1v1h-1zM4 30h1v1h-1zM4 31h1v1h-1zM5 30h1v1h-1zM6 30h1v1h-1zM7 30h1v1h-1zM8 30h1v1h-1zM9 30h1v1h-1zM10 30h1v1h-1zM10 31h1v1h-1zM12 31h1v1h-1zM14 30h1v1h-1zM15 31h1v1h-1zM16 30h1v1h-1zM16 31h1v1h-1zM17 30h1v1h-1zM18 30h1v1h-1zM19 30h1v1h-1zM21 30h1v1h-1zM22 30h1v1h-1zM22 31h1v1h-1zM23 30h1v1h-1zM25 30h1v1h-1zM26 30h1v1h-1zM26 31h1v1h-1zM27 30h1v1h-1zM27 31h1v1h-1zM28 30h1v1h-1zM28 31h1v1h-1zM30 30h1v1h-1zM32 30h1v1h-1zM32 31h1v1h-1zM33 31h1v1h-1zM34 30h1v1h-1zM35 31h1v1h-1zM36 30h1v1h-1zM4 32h1v1h-1zM4 33h1v1h-1zM6 32h1v1h-1zM6 33h1v1h-1zM7 32h1v1h-1zM7 33h1v1h-1zM8 32h1v1h-1zM8 33h1v1h-1zM10 32h1v1h-1zM10 33h1v1h-1zM13 32h1v1h-1zM13 33h1v1h-1zM14 33h1v1h-1zM17 32h1v1h-1zM17 33h1v1h-1zM18 32h1v1h-1zM19 32h1v1h-1zM20 32h1v1h-1zM20 33h1v1h-1zM21 32h1v1h-1zM23 32h1v1h-1zM24 32h1v1h-1zM24 33h1v1h-1zM25 32h1v1h-1zM27 32h1v1h-1zM27 33h1v1h-1zM28 32h1v1h-1zM29 32h1v1h-1zM29 33h1v1h-1zM30 32h1v1h-1zM31 32h1v1h-1zM31 33h1v1h-1zM32 32h1v1h-1zM32 33h1v1h-1zM33 32h1v1h-1zM33 33h1v1h-1zM34 33h1v1h-1zM35 32h1v1h-1zM36 32h1v1h-1zM4 34h1v1h-1zM4 35h1v1h-1zM6 34h1v1h-1zM7 34h1v1h-1zM8 34h1v1h-1zM10 34h1v1h-1zM10 35h1v1h-1zM12 34h1v1h-1zM12 35h1v1h-1zM13 34h1v1h-1zM13 35h1v1h-1zM14 34h1v1h-1zM14 35h1v1h-1zM15 34h1v1h-1zM17 35h1v1h-1zM19 34h1v1h-1zM21 34h1v1h-1zM22 34h1v1h-1zM22 35h1v1h-1zM23 34h1v1h-1zM25 34h1v1h-1zM26 34h1v1h-1zM26 35h1v1h-1zM27 34h1v1h-1zM28 34h1v1h-1zM29 34h1v1h-1zM30 34h1v1h-1zM31 35h1v1h-1zM32 34h1v1h-1zM32 35h1v1h-1zM33 34h1v1h-1zM36 34h1v1h-1zM4 36h1v1h-1zM5 36h1v1h-1zM6 36h1v1h-1zM7 36h1v1h-1zM8 36h1v1h-1zM9 36h1v1h-1zM10 36h1v1h-1zM12 36h1v1h-1zM15 36h1v1h-1zM16 36h1v1h-1zM17 36h1v1h-1zM19 36h1v1h-1zM20 36h1v1h-1zM21 36h1v1h-1zM23 36h1v1h-1zM24 36h1v1h-1zM25 36h1v1h-1zM28 36h1v1h-1zM30 36h1v1h-1zM36 36h1v1h-1zM0 41h1v1h-1zM1 41h1v1h-1zM2 41h1v1h-1zM3 41h1v1h-1zM4 41h1v1h-1zM5 41h1v1h-1zM6 41h1v1h-1zM7 41h1v1h-1zM8 41h1v1h-1zM9 41h1v1h-1zM10 41h1v1h-1zM11 41h1v1h-1zM12 41h1v1h-1zM13 41h1v1h-1zM14 41h1v1h-1zM15 41h1v1h-1zM16 41h1v1h-1zM17 41h1v1h-1zM18 41h1v1h-1zM19 41h1v1h-1zM20 41h1v1h-1zM21 41h1v1h-1zM22 41h1v1h-1zM23 41h1v1h-1zM24 41h1v1h-1zM25 41h1v1h-1zM26 41h1v1h-1zM27 41h1v1h-1zM28 41h1v1h-1zM29 41h1v1h-1zM30 41h1v1h-1zM31 41h1v1h-1zM32 41h1v1h-1zM33 41h1v1h-1zM34 41h1v1h-1zM35 41h1v1h-1zM36 41h1v1h-1zM37 41h1v1h-1zM38 41h1v1h-1zM39 41h1v1h-1zM40 41h1v1h-1z" fill="#132620"/><rect x="8.0" y="15.5" width="25" height="11" rx="1.6" fill="#FFB627" shape-rendering="auto"/><text x="20.5" y="22.6" text-anchor="middle" font-size="4.4" font-weight="600" fill="#132620">sample</text></svg>Scan the code with your phone: Telegram > Settings > Devices > Link Desktop Device. The code changes about every 30 seconds, the new one appears here by itself.</pre></div>
+            <figcaption>The code here is covered with a label: the real one appears only in your terminal.</figcaption>
+          </figure>
+          <p>If you have Two-Step Verification turned on, the program asks for that password too. If scanning does not work, run <code class="inline">tgsweep --code</code>: the program asks for your phone number, and the sign-in code usually comes to Telegram on your other device.</p>
+          <p class="aside">Scan only the code from your own terminal. If you scan a QR code that someone sent you, you give that person access to your account.</p>
+        </div>
+      </li>
+
+      <li class="step">
+        <span class="num" aria-hidden="true">8</span>
+        <div class="step-body">
+          <h4>Choose which messages to delete</h4>
+          <p>Pick the age with the arrows and press <kbd>Enter</kbd>. For example, “Older than 7 days” keeps the last week of conversation.</p>
+          <figure class="shot">
+            <div class="term"><div class="term-bar" aria-hidden="true">Terminal</div><pre class="term-body">Account: Maria (@maria_demo)
+<span class="q">?</span><span class="b"> Which of your messages to delete? </span>(arrows and Enter)
+   All, including today's
+   Older than 1 day
+   Older than 2 days
+ » Older than 7 days
+   Older than 30 days</pre></div>
+          </figure>
+          <p>Then the program searches for your messages. In large chats the search takes a few minutes. At the bottom you can see which chat it is checking. The next search is faster.</p>
+          <figure class="shot">
+            <div class="term"><div class="term-bar" aria-hidden="true">Terminal</div><pre class="term-body"><span class="q">?</span><span class="b"> Which of your messages to delete? </span><span class="ans">Older than 7 days</span>
+Looking for your messages in groups and your comments on posts. In large chats this can take a few minutes.
+/ 0:19 Chat 9 of 21 · looking for your messages, 60 found so far · Spanish club</pre></div>
+          </figure>
+        </div>
+      </li>
+
+      <li class="step">
+        <span class="num" aria-hidden="true">9</span>
+        <div class="step-body">
+          <h4>Select the chats</h4>
+          <p><kbd>Space</kbd> selects a chat, <kbd>a</kbd> selects all, <kbd>Enter</kbd> continues. At first no chat is selected. Above the list, the program tells you what it skipped: private chats, bots, groups you created, and channels.</p>
+          <figure class="shot">
+            <div class="term"><div class="term-bar" aria-hidden="true">Terminal</div><pre class="term-body">Search took 50 s, 21 chats checked.
+Left alone:
+  private chats and bots (never opened): 3
+  chats you created (skipped so your own group is not emptied): 1
+  channels (delete your own posts in Telegram itself, comments on posts are searched separately): 1
+<span class="q">?</span><span class="b"> Select the chats to delete your messages from: </span>(arrows move, space selects, a selects all, Enter continues)
+   <span class="rv">● Building neighbors: 37 messages</span>
+ » <span class="rv">● Book club: 12 messages, 4 reactions</span>
+   ○ Morning runs: 8 messages
+   ○ Neighborhood notices: 3 messages, 2 reactions</pre></div>
+          </figure>
+        </div>
+      </li>
+
+      <li class="step">
+        <span class="num" aria-hidden="true">10</span>
+        <div class="step-body">
+          <h4>Confirm with the number</h4>
+          <p>The program shows how much it will delete in total and asks you to type that number. Deleted messages cannot be restored, so without the number it touches nothing.</p>
+          <figure class="shot">
+            <div class="term"><div class="term-bar" aria-hidden="true">Terminal</div><pre class="term-body">To be deleted: 49 messages, 4 reactions in 2 chats. This cannot be undone. It will take about 1 minute.
+<span class="q">?</span><span class="b"> To confirm, type the number 53:</span> <span class="ans">53</span></pre></div>
+          </figure>
+          <p>Deletion runs with pauses so that Telegram does not limit your account. If Telegram asks to wait, the program waits and says so. To stop, press <kbd>Ctrl</kbd>+<kbd>C</kbd><span data-os="mac"> (on a Mac it is also Ctrl, not Cmd)</span>: the program finishes the current request and finds the rest on the next run.</p>
+          <figure class="shot">
+            <div class="term"><div class="term-bar" aria-hidden="true">Terminal</div><pre class="term-body"><span class="q">?</span><span class="b"> To confirm, type the number 53: </span><span class="ans">53</span>
+| 0:04 Deleting: 37 of 53 (69%) · Building neighbors</pre></div>
+          </figure>
+        </div>
+      </li>
+
+      <li class="step">
+        <span class="num" aria-hidden="true">11</span>
+        <div class="step-body">
+          <h4>Sign out on this computer</h4>
+          <p>At the end the program asks whether to sign out on this computer. Press <kbd>Enter</kbd>, which means “yes”. It is safer: the session file opens your whole account. Next time you will need the QR code again, but not the key.</p>
+          <figure class="shot">
+            <div class="term"><div class="term-bar" aria-hidden="true">Terminal</div><pre class="term-body">Done. Messages deleted: 49, comments deleted: 0, reactions removed: 4.
+Log without message texts: /Users/maria/Library/Application Support/tgsweep/logs/actions.jsonl
+<span class="q">?</span><span class="b"> Sign out on this computer? Next time you will need the QR code again. </span><span class="ans">Yes</span>
+You are signed out on this computer.</pre></div>
+          </figure>
+        </div>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<section class="maintain wrap" id="maintain" aria-labelledby="maintain-title">
+  <h2 id="maintain-title">Update, sign out, uninstall</h2>
+  <div class="maintain-list">
+    <div class="maintain-row">
+      <h3>Update the program</h3>
+      <p>The same command as for installation, but with <code class="inline">--reinstall</code>: it downloads the latest version and installs it over the old one.</p>
+      <div class="cmd"><code>uv tool install --reinstall https://github.com/<wbr>umbrella-at/<wbr>tgsweep/<wbr>archive/<wbr>refs/<wbr>heads/<wbr>main.zip</code><button type="button" class="copy">Copy</button></div>
+    </div>
+    <div class="maintain-row">
+      <h3>Sign out later</h3>
+      <p>If you answered “no” at the end, sign out like this:</p>
+      <div class="cmd"><code>tgsweep --logout</code><button type="button" class="copy">Copy</button></div>
+      <p>Or on your phone: Settings &gt; Devices &gt; the tgsweep session &gt; Terminate Session.</p>
+    </div>
+    <div class="maintain-row">
+      <h3>Uninstall</h3>
+      <p>Sign out and remove the program:</p>
+      <div class="cmd"><code>tgsweep --logout</code><button type="button" class="copy">Copy</button></div>
+      <div class="cmd"><code>uv tool uninstall tgsweep</code><button type="button" class="copy">Copy</button></div>
+      <p>Then delete the folder with the key and the log:</p>
+      <div data-os="win"><p class="os-name">Windows</p><div class="cmd"><code>Remove-Item -Recurse -Force "$env:LOCALAPPDATA\tgsweep"</code><button type="button" class="copy">Copy</button></div></div>
+      <div data-os="mac"><p class="os-name">macOS</p><div class="cmd"><code>rm -rf "$HOME/<wbr>Library/<wbr>Application Support/<wbr>tgsweep"</code><button type="button" class="copy">Copy</button></div></div>
+      <div data-os="linux"><p class="os-name">Linux</p><div class="cmd"><code>rm -rf "$HOME/.local/share/tgsweep"</code><button type="button" class="copy">Copy</button></div></div>
+      <p class="aside">You can keep uv: it does not run anything by itself. To remove it too, see <a href="https://docs.astral.sh/uv/getting-started/installation/#uninstallation">the uv documentation</a>.</p>
+    </div>
+  </div>
+</section>
+
+<section class="safety" id="safety" aria-labelledby="safety-title">
+  <div class="wrap safety-grid">
+    <div class="never">
+      <h2 id="safety-title">What tgsweep never does</h2>
+      <ul>
+        <li>never opens private chats, bots, Saved Messages or the Telegram service chat;</li>
+        <li>never touches other people’s messages, even if you are a group admin;</li>
+        <li>never touches groups you created or your posts in channels;</li>
+        <li>deletes nothing until you select chats and confirm;</li>
+        <li>sends nothing anywhere except requests to Telegram: the program has no server and no analytics.</li>
+      </ul>
+    </div>
+    <div class="why">
+      <h3>Why your own key</h3>
+      <p>The key, the session file and the log stay only on your computer. The program has no server of its own, and the author has no access to your account. A shared key cannot be hidden in open source code, and Telegram blocks keys that are published or abused, so the program would stop working for everyone at once. With your own key, that cannot happen.</p>
+      <p data-os="win">Everything is in the folder <samp>%LOCALAPPDATA%\tgsweep</samp>.</p>
+      <p data-os="mac">Everything is in the folder <samp>~/Library/Application Support/tgsweep</samp>.</p>
+      <p data-os="linux">Everything is in the folder <samp>~/.local/share/tgsweep</samp>.</p>
+      <h3>Check it yourself</h3>
+      <p>The code is open: <a href="https://github.com/umbrella-at/tgsweep">github.com/umbrella-at/tgsweep</a>. If you do not read code, give the link to any AI chat and ask what the program sends and what it deletes. The repository has tests that keep the program from gaining extra abilities: writing messages, leaving groups, deleting other people’s messages.</p>
+    </div>
+  </div>
+</section>
+
+<section class="faq wrap" id="faq" aria-labelledby="faq-title">
+  <h2 id="faq-title">FAQ</h2>
+  <details>
+    <summary>Will my account get banned?</summary>
+    <p>Deleting your own messages is a normal thing to do in Telegram. The program deletes with pauses and waits whenever Telegram asks it to. But it is unofficial, and nobody can give guarantees on Telegram’s behalf.</p>
+  </details>
+  <details>
+    <summary>Does the program see my private chats?</summary>
+    <p>Telegram sends the list of all chats, private ones included, with the last message of each chat. The program skips private chats right away: it does not read their history, delete anything in them or save anything about them. The same goes for bots, Saved Messages and the Telegram service chat.</p>
+  </details>
+  <details>
+    <summary>What about other people’s messages? I am an admin in a couple of groups.</summary>
+    <p>Only yours, even if you are an admin. Groups you created yourself are skipped entirely, so that you do not empty your own group.</p>
+  </details>
+  <details>
+    <summary>Will the messages disappear for everyone?</summary>
+    <p>Yes, as if you deleted them yourself in Telegram. They cannot be restored, so before deleting the program asks you to type the number. The log keeps only chat and message numbers, no texts.</p>
+  </details>
+  <details>
+    <summary>How long does it take?</summary>
+    <p>The search in large chats takes a few minutes. Before deleting, the program tells you roughly how many minutes it will take. It deletes messages in batches of 100 with a 4 second pause and removes reactions one by one: a thousand messages take less than a minute, a hundred reactions about seven minutes. If Telegram asks to wait, it takes longer.</p>
+  </details>
+  <details>
+    <summary>Will it find my old reactions?</summary>
+    <p>It looks for reactions only in messages from the last 90 days: to find your reaction, it has to go through the chat message by message, and that is slow. Your own messages and comments it finds from any time.</p>
+  </details>
+  <details>
+    <summary>What if I close the window in the middle of deleting?</summary>
+    <p>What was deleted stays deleted, and the program finds the rest on the next run. It is better to press <kbd>Ctrl</kbd>+<kbd>C</kbd>: it finishes the current request and stops.</p>
+  </details>
+  <details>
+    <summary>my.telegram.org shows ERROR when I create the application</summary>
+    <p>It happens. Usually it helps to turn off your VPN and ad blocker, fill in the fields in Latin letters and try again later or in another browser.</p>
+  </details>
+  <details>
+    <summary>Why a terminal and not a regular app?</summary>
+    <p>The program is small, and this way it is easier to check: it installs with one command straight from the open code, without an installer with who knows what inside.</p>
+  </details>
+  <details>
+    <summary>The program speaks Russian</summary>
+    <p>tgsweep uses your system language: Russian on a Russian system, English otherwise. To switch to English: <code class="inline">tgsweep --lang en</code>. The choice is remembered, you do not need to repeat it.</p>
+  </details>
+  <details>
+    <summary>Is this a Telegram program?</summary>
+    <p>No. tgsweep is made by an independent developer and is not affiliated with Telegram.</p>
+  </details>
+</section>
+</main>
+
+<footer class="foot wrap">
+  <div class="foot-in">
+    <p>tgsweep, MIT license. An unofficial program, not affiliated with Telegram.</p>
+    <p>The site counts visits with GoatCounter, without cookies or personal data: page views, the referring site, browser, system, country and screen width.</p>
+    <p><a href="https://github.com/umbrella-at/tgsweep">Code on GitHub</a></p>
+  </div>
+</footer>
+<div class="sr-only" aria-live="polite" id="live"></div>
+<script type="application/json" id="page-text">{"copied": "Copied", "copied_say": "Command copied", "selected": "Selected", "copy_failed_say": "Could not copy, the command is selected: press Ctrl+C or Cmd+C", "message": ["message", "messages"], "reaction": ["reaction", "reactions"], "chat_in": ["chat", "chats"], "minute": ["minute", "minutes"], "nothing": "nothing", "none_picked": "No chats selected, nothing was deleted.", "none_picked_hint": "That is what the program does too: with no chats selected, it touches nothing.", "will_delete": "To be deleted: {counts} in {chats}. This cannot be undone. It will take about {minutes}.", "confirm_number": "To confirm, type the number {total}:", "demo_end_hint": "In the real program you would now type this number, and it would start deleting. The demo ends here."}</script>
+<script data-goatcounter="https://umbrella.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
+</body>
+</html>

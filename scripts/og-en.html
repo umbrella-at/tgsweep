@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- The English link preview, rendered to site/og-en.png by scripts/render-og-en.py. Colours from site/style.css. -->
+<style>
+@font-face { font-family: "Golos Text"; src: url("../site/fonts/golos-text.woff2") format("woff2"); font-weight: 400 700; }
+@font-face { font-family: "JetBrains Mono"; src: url("../site/fonts/jetbrains-mono.woff2") format("woff2"); font-weight: 400 700; }
+:root {
+  --bg: #E3EAE4; --ink: #1B2F26; --soft: #485D53;
+  --t-bg: #132620; --t-bar: #1B3129; --t-fg: #D3E0D7; --t-bright: #F1F7F3; --t-dim: #8BA597; --t-q: #79A3CC;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  width: 1200px; height: 630px; overflow: hidden; position: relative;
+  background: var(--bg); color: var(--ink);
+  font-family: "Golos Text", sans-serif; font-kerning: normal;
+}
+.left { position: absolute; left: 72px; top: 64px; bottom: 60px; width: 580px; display: flex; flex-direction: column; }
+.brand { display: flex; align-items: center; gap: 14px; font-weight: 650; font-size: 34px; letter-spacing: -0.01em; }
+.brand svg { width: 44px; height: 44px; color: var(--ink); }
+h1 { margin: auto 0 0; font-weight: 700; font-size: 60px; line-height: 1.08; letter-spacing: -0.025em; }
+.facts { margin: 30px 0 0; font-size: 27px; line-height: 1.35; color: var(--soft); }
+.term {
+  position: absolute; left: 650px; top: 92px; width: 600px; height: 600px;
+  background: var(--t-bg); color: var(--t-fg); border-radius: 16px; overflow: hidden;
+}
+.bar { background: var(--t-bar); color: var(--t-dim); font-size: 20px; padding: 14px 24px; }
+pre { margin: 0; padding: 22px 24px; font: 400 22px/1.62 "JetBrains Mono", monospace; white-space: pre; }
+.q { color: var(--t-q); }
+.b { color: var(--t-bright); font-weight: 700; }
+.on { background: var(--t-fg); color: var(--t-bg); }
+</style>
+</head>
+<body>
+<div class="left">
+  <div class="brand">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="currentColor"/><circle cx="11" cy="16" r="4.5" fill="#E3EAE4"/><circle cx="22" cy="16" r="3.6" fill="none" stroke="#E3EAE4" stroke-width="1.8"/></svg>
+    tgsweep
+  </div>
+  <h1>Delete your old<br>messages from<br>Telegram groups</h1>
+  <p class="facts">A free desktop program.<br>Windows, macOS and Linux.</p>
+</div>
+<div class="term">
+  <div class="bar">tgsweep</div>
+<pre><span class="q">?</span><span class="b"> Select the chats to delete
+  your messages from:</span>
+
+ » <span class="on">● Building neighbors: 37 messages</span>
+   <span class="on">● Book club: 12 messages</span>
+   ○ Morning runs: 8 messages
+   <span class="on">● Neighborhood notices: 3 messages</span></pre>
+</div>
+</body>
+</html>

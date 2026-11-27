@@ -1,93 +1,95 @@
 # tgsweep
 
-Удаляет ваши сообщения, комментарии к постам и реакции в группах Telegram, которые вы сами отметите. Работает на вашем компьютере: macOS, Windows или Linux. Сервер и бот не нужны.
+English · [Русский](README.ru.md)
 
-Пошаговая инструкция для Windows, macOS и Linux: https://tgsweep.atworks.dev
+Deletes your messages, comments on posts and reactions in the Telegram groups you select. Runs on your computer: macOS, Windows or Linux. No server or bot needed.
 
-Что tgsweep не делает никогда:
+Step-by-step guide for Windows, macOS and Linux: https://tgsweep.atworks.dev/en/
 
-- не открывает личные чаты, ботов, «Избранное» и служебный чат Telegram;
-- не трогает чужие сообщения, даже если вы админ группы;
-- не трогает группы, которые вы создали, и ваши посты в каналах;
-- ничего не удаляет без вашего выбора чатов и подтверждения.
+What tgsweep never does:
 
-## Установка
+- never opens private chats, bots, Saved Messages or the Telegram service chat;
+- never touches other people's messages, even if you are a group admin;
+- never touches groups you created or your posts in channels;
+- deletes nothing until you select chats and confirm.
 
-Нужен uv, менеджер Python-программ. Python он установит сам.
+## Installation
 
-macOS и Linux, в Терминале:
+You need uv, a manager for Python programs. It installs Python by itself.
+
+macOS and Linux, in Terminal:
 
 ```sh
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-Windows, в PowerShell:
+Windows, in PowerShell:
 
 ```powershell
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-Закройте и снова откройте терминал, затем установите tgsweep:
+Close and reopen the terminal, then install tgsweep:
 
 ```sh
 uv tool install https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip
 ```
 
-Git для этого не нужен. Обновление: та же команда с `--reinstall`, она скачает свежую версию:
+You do not need Git for this. To update, run the same command with `--reinstall`, it downloads the latest version:
 
 ```sh
 uv tool install --reinstall https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip
 ```
 
-`uv tool upgrade tgsweep` для этого не годится: архив по тому же адресу uv второй раз не скачивает и отвечает «Nothing to upgrade».
+`uv tool upgrade tgsweep` does not work here: uv does not download an archive from the same address again and answers "Nothing to upgrade".
 
-## api_id и api_hash
+## api_id and api_hash
 
-Сторонним программам для Telegram нужен свой ключ. Он бесплатный:
+Third-party Telegram programs need their own key. It is free:
 
-1. Откройте https://my.telegram.org и войдите по номеру телефона. Код придёт в Telegram.
-2. Выберите API development tools и создайте приложение. Название и адрес любые, платформа Desktop.
-3. При первом запуске tgsweep спросит App api_id и App api_hash. api_hash при вводе не виден.
+1. Open https://my.telegram.org and sign in with your phone number. The code comes to Telegram.
+2. Choose API development tools and create an application. Any title and URL will do, platform Desktop.
+3. On the first run tgsweep asks for App api_id and App api_hash. The api_hash stays hidden as you type.
 
-Они сохраняются только на вашем компьютере.
+They are saved only on your computer.
 
-## Запуск
+## Usage
 
 ```sh
 tgsweep
 ```
 
-1. Вход по QR-коду: на телефоне Telegram, Настройки, Устройства, «Подключить устройство». Если стоит облачный пароль, tgsweep его спросит. Без камеры можно войти по коду: `tgsweep --code`.
-2. Выберите, какие сообщения удалить: все, даже сегодняшние, или старше 1, 2, 7 или 30 дней.
-3. tgsweep найдёт ваши сообщения в группах и комментарии к постам каналов. В больших чатах поиск занимает несколько минут, внизу видно, какой чат он сейчас просматривает и сколько прошло времени. Следующий поиск быстрее: чаты, где ваших реакций не нашлось, tgsweep запоминает и читает только новые сообщения.
-4. Отметьте чаты пробелом и нажмите Enter. Сначала не отмечено ничего.
-5. Введите число, которое покажет tgsweep: столько сообщений и реакций будет удалено. Вернуть их нельзя.
-6. Удаляется всё отмеченное за один раз, с паузами, чтобы Telegram не ограничил аккаунт. Внизу видно, сколько уже удалено. Если Telegram просит подождать, tgsweep ждёт и пишет об этом. Ctrl+C останавливает после текущего запроса, оставшееся найдётся при следующем запуске.
-7. В конце tgsweep предложит выйти из аккаунта на этом компьютере. Так безопаснее: файл входа открывает весь аккаунт.
+1. Sign in with a QR code: on your phone, Telegram > Settings > Devices > Link Desktop Device. If you have Two-Step Verification on, tgsweep asks for that password. If scanning does not work, sign in with a code: `tgsweep --code`.
+2. Choose which messages to delete: all, including today's, or older than 1, 2, 7 or 30 days.
+3. tgsweep finds your messages in groups and your comments on channel posts. In large chats the search takes a few minutes, and the bottom line shows which chat it is checking and how much time has passed. The next search is faster: tgsweep remembers the chats where none of your reactions were found and reads only new messages there.
+4. Select chats with Space and press Enter. At first nothing is selected.
+5. Type the number tgsweep shows: that many messages and reactions will be deleted. They cannot be restored.
+6. Everything selected is deleted in one go, with pauses so that Telegram does not limit your account. The bottom line shows how much is deleted already. If Telegram asks to wait, tgsweep waits and says so. Ctrl+C stops after the current request, and the rest will be found on the next run.
+7. At the end tgsweep offers to sign out on this computer. It is safer: the session file opens your whole account.
 
-Выйти позже: `tgsweep --logout`. Сеанс можно завершить и в самом Telegram: Настройки, Устройства, сеанс tgsweep, «Завершить сеанс».
+To sign out later: `tgsweep --logout`. You can also end the session in Telegram itself: Settings > Devices > the tgsweep session > Terminate Session.
 
-Язык программы выбирается по системе: русский, если система на русском, иначе английский. Вручную: `tgsweep --lang ru` или `--lang en`, выбор запоминается; вернуть автоматический: `--lang auto`. Переменная `TGSWEEP_LANG` (ru, en или auto) важнее сохранённого выбора.
+The program uses your system language: Russian on a Russian system, English otherwise. To set it manually: `tgsweep --lang en` or `--lang ru`, the choice is remembered; back to automatic: `--lang auto`. The `TGSWEEP_LANG` variable (ru, en or auto) overrides the saved choice.
 
-## Где лежат файлы
+## Where the files are
 
-| Система | Папка |
+| System | Folder |
 |---|---|
 | macOS | `~/Library/Application Support/tgsweep` |
 | Windows | `%LOCALAPPDATA%\tgsweep` |
 | Linux | `~/.local/share/tgsweep` |
 
-Там файл входа (`tgsweep.session`), api_id и api_hash (`credentials.json`), `settings.json` с выбранным языком, если вы его меняли, и журнал удалений `logs/actions.jsonl`: номера чатов и сообщений, без текстов. Другую папку можно задать переменной `TGSWEEP_HOME`.
+It holds the session file (`tgsweep.session`), the api_id and api_hash (`credentials.json`), `settings.json` with the chosen language if you changed it, and the deletion log `logs/actions.jsonl`: chat and message numbers, no texts. You can set another folder with the `TGSWEEP_HOME` variable.
 
-## Удаление программы
+## Uninstall
 
 ```sh
 tgsweep --logout
 uv tool uninstall tgsweep
 ```
 
-Затем удалите папку из таблицы выше.
+Then delete the folder from the table above.
 
-## Лицензия
+## License
 
 MIT
