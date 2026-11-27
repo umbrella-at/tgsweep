@@ -8,3 +8,4 @@ build/
 *.session-journal
 credentials.json
 .ruff_cache/
+docs/media/check/

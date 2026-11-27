@@ -196,7 +196,11 @@ def test_no_dashes_in_human_texts():
     targets = list(source_files().values())
     targets += sorted(REPO.glob("*.md"))  # every README, whatever its language
     assert set(READMES) <= set(targets), "a README was not found"
-    targets += site_files() + sorted((REPO / "docs").glob("*.md")) + sorted((REPO / "scripts").glob("*.html"))
+    targets += site_files() + sorted((REPO / "docs").glob("*.md"))
+    targets += [path for pattern in ("*.html", "*.py", "*.sh") for path in sorted((REPO / "scripts").glob(pattern))]
+    tapes = sorted((REPO / "docs" / "media").glob("*.tape"))
+    assert len(tapes) == 2, "the README recordings: one script per language"
+    targets += tapes
     for path in targets:
         text = path.read_text(encoding="utf-8")
         assert "—" not in text and "–" not in text, path

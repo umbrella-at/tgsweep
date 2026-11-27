@@ -2,6 +2,10 @@
 
 English · [Русский](README.ru.md)
 
+![tgsweep deleting messages in two selected Telegram groups](docs/media/demo-en.gif)
+
+Recorded on a made-up account, pauses shortened.
+
 Deletes your messages, comments on posts and reactions in the Telegram groups you select. Runs on your computer: macOS, Windows or Linux. No server or bot needed.
 
 Step-by-step guide for Windows, macOS and Linux: https://tgsweep.atworks.dev/en/
