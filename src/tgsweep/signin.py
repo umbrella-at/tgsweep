@@ -14,6 +14,8 @@ from typing import Callable, TextIO
 
 from telethon import errors, functions, types
 
+from .i18n import t
+
 QR_TOTAL_S = 300.0
 CODE_ATTEMPTS = 5
 PASSWORD_ATTEMPTS = 3
@@ -22,19 +24,22 @@ SEND_CODE_ATTEMPTS = 3
 Ask = Callable[[str], str]
 Say = Callable[[str], None]
 
-USE_QR = "Войдите по QR-коду: та же команда без --code."
-QR_HINT = (
-    "Отсканируйте код телефоном: Telegram, Настройки, Устройства, «Подключить устройство». "
-    "Код меняется примерно раз в 30 секунд, новый появится здесь сам."
-)
-
+# How Telegram will send the code next time -> text key.
 NEXT_WAY = {
-    types.auth.CodeTypeSms: "по SMS",
-    types.auth.CodeTypeCall: "звонком",
-    types.auth.CodeTypeFlashCall: "звонком",
-    types.auth.CodeTypeMissedCall: "звонком",
-    types.auth.CodeTypeFragmentSms: "через Fragment",
+    types.auth.CodeTypeSms: "way_sms",
+    types.auth.CodeTypeCall: "way_call",
+    types.auth.CodeTypeFlashCall: "way_call",
+    types.auth.CodeTypeMissedCall: "way_call",
+    types.auth.CodeTypeFragmentSms: "way_fragment",
 }
+
+
+def use_qr() -> str:
+    return t("use_qr")
+
+
+def qr_hint() -> str:
+    return t("qr_hint")
 
 
 class SignInError(Exception):
@@ -43,11 +48,11 @@ class SignInError(Exception):
 
 def where(code_type: object) -> str:
     """Where Telegram says it sent the code, in words."""
-    t = code_type
-    if isinstance(t, types.auth.SentCodeTypeApp):
-        return "в приложение Telegram на другом вашем устройстве: это сообщение в чате «Telegram» с синей галочкой, не SMS"
+    kind = code_type
+    if isinstance(kind, types.auth.SentCodeTypeApp):
+        return t("sent_app")
     if isinstance(
-        t,
+        kind,
         (
             types.auth.SentCodeTypeSms,
             types.auth.SentCodeTypeSmsWord,
@@ -55,24 +60,24 @@ def where(code_type: object) -> str:
             types.auth.SentCodeTypeFirebaseSms,
         ),
     ):
-        return "по SMS"
-    if isinstance(t, types.auth.SentCodeTypeCall):
-        return "голосовым звонком"
-    if isinstance(t, (types.auth.SentCodeTypeFlashCall, types.auth.SentCodeTypeMissedCall)):
-        return "звонком: код это последние цифры номера, с которого позвонят"
-    if isinstance(t, types.auth.SentCodeTypeEmailCode):
-        return f"на почту для входа {t.email_pattern}"
-    if isinstance(t, types.auth.SentCodeTypeFragmentSms):
-        return f"через Fragment: {t.url}"
-    return f"способом {type(t).__name__}"
+        return t("way_sms")
+    if isinstance(kind, types.auth.SentCodeTypeCall):
+        return t("way_voice")
+    if isinstance(kind, (types.auth.SentCodeTypeFlashCall, types.auth.SentCodeTypeMissedCall)):
+        return t("sent_flash")
+    if isinstance(kind, types.auth.SentCodeTypeEmailCode):
+        return t("sent_email", email=kind.email_pattern)
+    if isinstance(kind, types.auth.SentCodeTypeFragmentSms):
+        return t("sent_fragment", url=kind.url)
+    return t("sent_unknown", name=type(kind).__name__)
 
 
 def describe(sent: types.auth.SentCode) -> str:
-    text = f"Код отправлен {where(sent.type)}."
+    text = t("code_sent", where=where(sent.type))
     if sent.next_type is not None:
-        way = NEXT_WAY.get(type(sent.next_type), "другим способом")
-        after = f" за {sent.timeout} с" if sent.timeout else ""
-        text += f" Если он не придёт{after}, нажмите Enter без кода: Telegram отправит его {way}."
+        way = t(NEXT_WAY.get(type(sent.next_type), "way_other"))
+        after = t("code_within", seconds=sent.timeout) if sent.timeout else ""
+        text += t("code_next", after=after, way=way)
     return text
 
 
@@ -81,9 +86,9 @@ def _checked(sent: object) -> types.auth.SentCode | None:
     if isinstance(sent, types.auth.SentCodeSuccess):
         return None
     if isinstance(sent, types.auth.SentCodePaymentRequired):
-        raise SignInError("Telegram не отправит код бесплатно: для этого номера он просит оплатить SMS. " + USE_QR)
+        raise SignInError(t("paid_sms") + use_qr())
     if isinstance(sent.type, types.auth.SentCodeTypeSetUpEmailRequired):
-        raise SignInError("Telegram не отправил код: сначала он требует привязать почту для входа. " + USE_QR)
+        raise SignInError(t("email_required") + use_qr())
     return sent
 
 
@@ -103,11 +108,11 @@ async def request_code(client, phone: str) -> types.auth.SentCode | None:
 async def password_login(client, ask_secret: Ask, say: Say) -> None:
     for _ in range(PASSWORD_ATTEMPTS):
         try:
-            await client.sign_in(password=ask_secret("Облачный пароль: "))
+            await client.sign_in(password=ask_secret(t("password_prompt")))
             return
         except errors.PasswordHashInvalidError:
-            say("Пароль не подошёл.")
-    raise SignInError("облачный пароль не подошёл три раза подряд, запустите вход позже")
+            say(t("password_wrong"))
+    raise SignInError(t("password_three_times"))
 
 
 async def code_login(client, phone: str, ask: Ask, ask_secret: Ask, say: Say) -> None:
@@ -116,15 +121,15 @@ async def code_login(client, phone: str, ask: Ask, ask_secret: Ask, say: Say) ->
         return
     say(describe(sent))
     for _ in range(CODE_ATTEMPTS):
-        code = ask("Код: ").strip()
+        code = ask(t("code_prompt")).strip()
         if not code:
             if sent.next_type is None:
-                say("Другого способа Telegram не предлагает. Введите код или прервите вход (Ctrl+C) и войдите по QR-коду.")
+                say(t("no_other_way"))
                 continue
             try:
                 resent = await client(functions.auth.ResendCodeRequest(phone, sent.phone_code_hash))
             except errors.RPCError as exc:
-                raise SignInError(f"Telegram не отправил код повторно ({exc.__class__.__name__}). " + USE_QR) from None
+                raise SignInError(t("resend_failed", name=exc.__class__.__name__) + use_qr()) from None
             sent = _checked(resent)
             if sent is None:
                 return
@@ -137,10 +142,10 @@ async def code_login(client, phone: str, ask: Ask, ask_secret: Ask, say: Say) ->
             await password_login(client, ask_secret, say)
             return
         except errors.PhoneCodeInvalidError:
-            say("Код не подошёл, попробуйте ещё раз.")
+            say(t("code_wrong"))
         except errors.PhoneCodeExpiredError:
-            raise SignInError("код истёк, запустите вход ещё раз") from None
-    raise SignInError("код не подошёл несколько раз подряд, запустите вход позже")
+            raise SignInError(t("code_expired")) from None
+    raise SignInError(t("code_too_many"))
 
 
 async def qr_login(
@@ -158,15 +163,13 @@ async def qr_login(
         qr = await client.qr_login()
         while True:
             show(qr.url)
-            say(QR_HINT)
+            say(qr_hint())
             try:
                 await qr.wait()
                 return
             except asyncio.TimeoutError:
                 if clock() >= deadline:
-                    raise SignInError(
-                        "QR-код так и не отсканировали. Если вход на телефоне вы подтвердили, запустите вход ещё раз"
-                    ) from None
+                    raise SignInError(t("qr_not_scanned")) from None
                 await qr.recreate()
                 if await client.is_user_authorized():  # the scan landed between the timeout and the new code
                     return

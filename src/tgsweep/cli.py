@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+import os
 import platform
 import sys
 from typing import Callable
@@ -12,24 +13,25 @@ from typing import Callable
 from telethon import TelegramClient, errors
 from telethon.errors import RPCError
 
-from . import __version__, signin
+from . import __version__, i18n, signin
 from .app import UI, Stopper, sweep
 from .errors import ConfigError
 from .home import Home, default_root, load_credentials, parse_credentials, save_credentials
+from .i18n import t
 from .net import SESSION_LOST_ERRORS
 
 CREDENTIAL_ATTEMPTS = 3
 
-CREDENTIALS_HELP = """Для работы нужны api_id и api_hash. Их выдаёт сам Telegram, это бесплатно:
-  1. Откройте https://my.telegram.org и войдите по номеру телефона.
-  2. Выберите API development tools и создайте приложение, название любое.
-  3. Скопируйте сюда App api_id и App api_hash.
-Они сохранятся только на этом компьютере."""
-
 # Telegram refuses these keys: they were mistyped, or the app was deleted on my.telegram.org.
 KEYS_REFUSED = (errors.ApiIdInvalidError, errors.ApiIdPublishedFloodError)
 
-LOGIN_HELP = "Вход в Telegram. tgsweep работает только с группами и каналами, личные чаты он не открывает."
+
+def credentials_help() -> str:
+    return "\n".join(t(key) for key in ("creds_intro", "creds_step1", "creds_step2", "creds_step3", "creds_saved"))
+
+
+def login_help() -> str:
+    return t("login_help")
 
 ClientFactory = Callable[..., TelegramClient]
 
@@ -50,16 +52,16 @@ def make_client(home: Home, api_id: int, api_hash: str, *, receive_updates: bool
 
 
 def ask_credentials(home: Home, ui: UI) -> tuple[int, str]:
-    ui.say(CREDENTIALS_HELP)
+    ui.say(credentials_help())
     for _ in range(CREDENTIAL_ATTEMPTS):
         try:
-            api_id, api_hash = parse_credentials(ui.ask("api_id: "), ui.ask_secret("api_hash (при вводе не виден): "))
+            api_id, api_hash = parse_credentials(ui.ask("api_id: "), ui.ask_secret(t("api_hash_prompt")))
         except ConfigError as exc:
-            ui.say(f"Не подошло: {exc}.")
+            ui.say(t("creds_rejected", error=exc))
             continue
         save_credentials(home, api_id, api_hash)
         return api_id, api_hash
-    raise ConfigError("api_id и api_hash не подошли три раза подряд, запустите tgsweep ещё раз")
+    raise ConfigError(t("creds_three_times"))
 
 
 async def log_out_here(client, home: Home, ui: UI) -> None:
@@ -74,10 +76,9 @@ async def log_out_here(client, home: Home, ui: UI) -> None:
         done = False
     await forget(client, home)
     if done:
-        ui.say("Вы вышли из аккаунта на этом компьютере.")
+        ui.say(t("signed_out"))
     else:
-        ui.say("Telegram не подтвердил выход. Файл входа на этом компьютере удалён, а сеанс tgsweep "
-               "завершите в Telegram: Настройки, Устройства.")
+        ui.say(t("sign_out_unconfirmed"))
 
 
 async def forget(client, home: Home) -> None:
@@ -93,7 +94,7 @@ async def run(args: argparse.Namespace, home: Home, ui: UI, *, client_factory: C
 
     if args.logout:
         if not home.session_file.exists():
-            ui.say("На этом компьютере вход не сохранён.")
+            ui.say(t("no_saved_login"))
             return 0
         client = client_factory(home, *creds, receive_updates=False)
         await client.connect()
@@ -108,18 +109,15 @@ async def run(args: argparse.Namespace, home: Home, ui: UI, *, client_factory: C
     await client.connect()
     try:
         if not await client.is_user_authorized():
-            ui.say(LOGIN_HELP)
+            ui.say(login_help())
             if args.code:
-                phone = ui.ask("Телефон в международном формате: ").strip()
+                phone = ui.ask(t("phone_prompt")).strip()
                 await signin.code_login(client, phone, ask=ui.ask, ask_secret=ui.ask_secret, say=ui.say)
             else:
                 await signin.qr_login(client, ask_secret=ui.ask_secret, say=ui.say, show=signin.show_qr)
     except KEYS_REFUSED:
         home.credentials_file.unlink(missing_ok=True)
-        raise ConfigError(
-            "Telegram не принял api_id и api_hash. Проверьте их на my.telegram.org и запустите tgsweep ещё раз: "
-            "он спросит их заново"
-        ) from None
+        raise ConfigError(t("keys_refused")) from None
     finally:
         await client.disconnect()
         home.secure_session()
@@ -128,17 +126,17 @@ async def run(args: argparse.Namespace, home: Home, ui: UI, *, client_factory: C
     await client.connect()
     try:
         if not await client.is_user_authorized():
-            raise ConfigError("вход не завершён, запустите tgsweep ещё раз")
+            raise ConfigError(t("login_incomplete"))
         try:
             code = await sweep(client, ui, home, stopper=stopper)
         except SESSION_LOST_ERRORS:
             await forget(client, home)
-            ui.say("Вход на этом компьютере больше не действует. Запустите tgsweep ещё раз и войдите заново.")
+            ui.say(t("login_expired"))
             return 1
-        if await ui.yes_no("Выйти из аккаунта на этом компьютере? Тогда в следующий раз снова понадобится QR-код.", default=True):
+        if await ui.yes_no(t("ask_sign_out"), default=True):
             await log_out_here(client, home, ui)
         else:
-            ui.say(f"Вход сохранён в {home.root}. Выйти можно командой: tgsweep --logout")
+            ui.say(t("login_kept", root=home.root))
         return code
     finally:
         if client.is_connected():
@@ -169,40 +167,78 @@ def quiet_library_logs(ui) -> None:
     lib.propagate = False
 
 
+def lang_parser() -> argparse.ArgumentParser:
+    """Only --lang, read before the full parser so that its help comes out in the chosen language."""
+    p = argparse.ArgumentParser(prog="tgsweep", add_help=False)
+    p.add_argument("--lang", nargs="?")  # a missing value is the full parser's to refuse
+    return p
+
+
 def parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(
-        prog="tgsweep",
-        description="Удаляет ваши сообщения, комментарии и реакции в группах Telegram, которые вы отметите. "
-        "Личные чаты не открывает.",
-    )
-    p.add_argument("--code", action="store_true", help="войти по коду из Telegram вместо QR-кода")
-    p.add_argument("--logout", action="store_true", help="выйти из аккаунта на этом компьютере и удалить файл входа")
+    p = argparse.ArgumentParser(prog="tgsweep", description=t("help_description"))
+    p.add_argument("--code", action="store_true", help=t("help_code"))
+    p.add_argument("--logout", action="store_true", help=t("help_logout"))
+    p.add_argument("--lang", choices=i18n.LANG_CHOICES, help=t("help_lang"))
     p.add_argument("--version", action="version", version=f"tgsweep {__version__}")
     return p
 
 
+def remember_lang(home: Home, choice: str | None, saved: str | None) -> str | None:
+    """Keeps --lang ru/en for the next runs, forgets it on --lang auto. The line to say when the choice changed."""
+    if choice in i18n.LANGS:
+        if choice == saved:
+            return None
+        home.save_lang(choice)
+        return t("lang_saved")
+    if choice == "auto":
+        home.forget_lang()
+        return t("lang_auto") if saved else None
+    return None
+
+
+def file_error(exc: OSError) -> str:
+    return t("file_error", filename=exc.filename or "", reason=exc.strerror or exc)
+
+
 def main(argv: list[str] | None = None) -> int:
+    early, _ = lang_parser().parse_known_args(argv)
+    flag = early.lang if early.lang in i18n.LANG_CHOICES else None  # a wrong value is the full parser's to refuse
+    home = Home(default_root())
+    system = i18n.system_lang()
+    saved = home.saved_lang()
+    try:
+        i18n.set_lang(i18n.pick_lang(flag, os.environ.get(i18n.LANG_ENV), saved, system))
+    except ValueError:
+        i18n.set_lang(system)
+        print(t("lang_env_bad", value=os.environ.get(i18n.LANG_ENV, "")), file=sys.stderr)
+        return 2
     args = parser().parse_args(argv)
+    try:
+        note = remember_lang(home, args.lang, saved)
+    except OSError as exc:
+        print(file_error(exc), file=sys.stderr)
+        return 1
+    if note:
+        print(note, flush=True)
     if not sys.stdin.isatty():
-        print("tgsweep работает только в интерактивном терминале.", file=sys.stderr)
+        print(t("needs_terminal"), file=sys.stderr)
         return 2
     enable_ansi()
     from .ui import TerminalUI
 
-    home = Home(default_root())
     ui = TerminalUI()
     quiet_library_logs(ui)
     try:
         return asyncio.run(run(args, home, ui))
     except (KeyboardInterrupt, EOFError):
-        print("\nПрервано.", file=sys.stderr)
+        print(t("interrupted"), file=sys.stderr)
         return 130
     except (ConfigError, signin.SignInError) as exc:
-        print(f"Ошибка: {exc}", file=sys.stderr)
+        print(t("error", error=exc), file=sys.stderr)
         return 1
     except (ConnectionError, TimeoutError, RPCError) as exc:
-        print(f"Ошибка связи с Telegram ({exc.__class__.__name__}). Проверьте интернет и запустите ещё раз.", file=sys.stderr)
+        print(t("network_error", name=exc.__class__.__name__), file=sys.stderr)
         return 1
     except OSError as exc:
-        print(f"Ошибка доступа к файлу {exc.filename or ''}: {exc.strerror or exc}", file=sys.stderr)
+        print(file_error(exc), file=sys.stderr)
         return 1

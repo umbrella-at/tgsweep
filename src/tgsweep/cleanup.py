@@ -21,7 +21,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 from telethon import errors, utils
 from telethon.tl import functions, types
 
-from . import guards
+from . import guards, i18n
 from .errors import ConfigError
 from .journal import Journal
 from .net import SESSION_LOST_ERRORS, flood_retry, linked_chat
@@ -806,7 +806,7 @@ async def apply_in_batches(
             progress(current)
 
     def on_handled(target: Target, n: int) -> None:
-        title = f"{target.title} (комментарии)" if target.kind == "comments" else target.title
+        title = i18n.t("title_comments", title=target.title) if target.kind == "comments" else target.title
         tell(done=current.done + n, chat=title)
 
     async def waited(seconds: float) -> None:

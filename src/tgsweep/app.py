@@ -17,24 +17,34 @@ from typing import Callable, Iterator, Protocol
 from . import cleanup
 from .cleanup import ApplyProgress, ApplyReport, Plan, Policy, ScanProgress, Target
 from .home import Home
+from .i18n import plural, t
 from .journal import Journal
 from .net import Sleep
 
-# (label, retention in days); 0 means every message, today's included.
+# (text key, retention in days); 0 means every message, today's included.
 RETENTION_CHOICES: list[tuple[str, int]] = [
-    ("Все, даже сегодняшние", 0),
-    ("Старше 1 дня", 1),
-    ("Старше 2 дней", 2),
-    ("Старше 7 дней", 7),
-    ("Старше 30 дней", 30),
+    ("retention_all", 0),
+    ("retention_1", 1),
+    ("retention_2", 2),
+    ("retention_7", 7),
+    ("retention_30", 30),
 ]
 
+# Why a chat was left alone -> text key.
 SKIP_NOTES = {
-    "dm": "личные чаты и боты (их не открываю)",
-    "creator": "чаты, которые вы создали (пропускаю, чтобы не опустошить вашу же группу)",
-    "broadcast": "каналы (свои посты удаляйте в самом Telegram, комментарии к постам ищу отдельно)",
-    "unsupported": "чаты неизвестного типа",
+    "dm": "skip_dm",
+    "creator": "skip_creator",
+    "broadcast": "skip_broadcast",
+    "unsupported": "skip_unsupported",
 }
+
+
+def retention_choices() -> list[tuple[str, int]]:
+    return [(t(key), days) for key, days in RETENTION_CHOICES]
+
+
+def skip_note(reason: str) -> str:
+    return t(SKIP_NOTES[reason])
 
 
 class UI(Protocol):
@@ -61,78 +71,65 @@ class UI(Protocol):
     async def yes_no(self, question: str, default: bool) -> bool: ...
 
 
-def plural(n: int, one: str, few: str, many: str) -> str:
-    if n % 10 == 1 and n % 100 != 11:
-        word = one
-    elif 2 <= n % 10 <= 4 and not 12 <= n % 100 <= 14:
-        word = few
-    else:
-        word = many
-    return f"{n} {word}"
-
-
 def counts(messages: int, comments: int, reactions: int) -> str:
     parts = []
     if messages:
-        parts.append(plural(messages, "сообщение", "сообщения", "сообщений"))
+        parts.append(plural(messages, "message"))
     if comments:
-        parts.append(plural(comments, "комментарий", "комментария", "комментариев"))
+        parts.append(plural(comments, "comment"))
     if reactions:
-        parts.append(plural(reactions, "реакция", "реакции", "реакций"))
-    return ", ".join(parts) or "ничего"
+        parts.append(plural(reactions, "reaction"))
+    return ", ".join(parts) or t("nothing")
 
 
-def target_counts(t: Target) -> tuple[int, int, int]:
-    n = len(t.message_ids)
-    return (0, n, len(t.reaction_ids)) if t.kind == "comments" else (n, 0, len(t.reaction_ids))
+def target_counts(target: Target) -> tuple[int, int, int]:
+    n = len(target.message_ids)
+    return (0, n, len(target.reaction_ids)) if target.kind == "comments" else (n, 0, len(target.reaction_ids))
 
 
-def row(t: Target) -> str:
-    title = f"{t.title} (комментарии к постам)" if t.kind == "comments" else t.title
-    return f"{title}: {counts(*target_counts(t))}"
+def row(target: Target) -> str:
+    title = t("title_comments_on_posts", title=target.title) if target.kind == "comments" else target.title
+    return f"{title}: {counts(*target_counts(target))}"
 
 
 def duration(seconds: float) -> str:
     seconds = max(0, round(seconds))
     if seconds < 60:
-        return f"{seconds} с"
+        return t("seconds", seconds=seconds)
     minutes = round(seconds / 60)
     if minutes < 60:
-        return f"{minutes} мин"
+        return t("minutes", minutes=minutes)
     hours, rest = divmod(minutes, 60)
-    return f"{hours} ч {rest} мин" if rest else f"{hours} ч"
+    return t("hours_minutes", hours=hours, rest=rest) if rest else t("hours", hours=hours)
 
 
 def scan_line(p: ScanProgress) -> str:
     """What the search is doing, in one line. The chat title goes last: a narrow screen cuts it, not the numbers."""
     if p.phase == "dialogs":
-        return f"Получаю список чатов: {p.read}"
+        return t("scan_dialogs", read=p.read)
     if p.phase == "waiting":
-        doing = f"Telegram попросил подождать {duration(p.wait_s)}, жду"
+        doing = t("waiting", duration=duration(p.wait_s))
     elif p.phase == "reactions":
-        doing = f"ищу ваши реакции, просмотрено {p.read}"
+        doing = t("scan_reactions", read=p.read)
     else:
-        doing = f"ищу ваши сообщения, найдено всего {p.found}"
-    return f"Чат {p.chat} из {p.chats} · {doing} · {p.title}"
+        doing = t("scan_messages", found=p.found)
+    return t("scan_chat", chat=p.chat, chats=p.chats, doing=doing, title=p.title)
 
 
 def apply_line(p: ApplyProgress) -> str:
     """What the deletion is doing, in one line, the chat title last."""
     percent = p.done * 100 // p.total if p.total else 100
-    line = f"Удаляю: {p.done} из {p.total} ({percent}%)"
+    line = t("deleting", done=p.done, total=p.total, percent=percent)
     if p.wait_s:
-        line += f" · Telegram попросил подождать {duration(p.wait_s)}, жду"
+        line += " · " + t("waiting", duration=duration(p.wait_s))
     if p.chat:
         line += f" · {p.chat}"
     return line
 
 
 def estimate_minutes(targets: list[Target], pause_s: float, chunk: int = cleanup.DELETE_CHUNK) -> int:
-    requests = sum(math.ceil(len(t.message_ids) / chunk) + len(t.reaction_ids) for t in targets)
+    requests = sum(math.ceil(len(x.message_ids) / chunk) + len(x.reaction_ids) for x in targets)
     return max(1, math.ceil(requests * pause_s / 60))
-
-
-STOP_NOTE = "Останавливаюсь после текущего запроса. Нажмите Ctrl+C ещё раз, чтобы прервать сразу."
 
 
 class Stopper:
@@ -159,9 +156,9 @@ class Stopper:
             # The handler may interrupt a write to the terminal (the status line redraws all the time),
             # and writing from inside it would then fail as a reentrant call: say it from the loop instead.
             try:
-                self._note = asyncio.get_running_loop().call_soon_threadsafe(say, STOP_NOTE)
+                self._note = asyncio.get_running_loop().call_soon_threadsafe(say, t("stop_note"))
             except RuntimeError:
-                say(STOP_NOTE)
+                say(t("stop_note"))
 
         signal.signal(signal.SIGINT, handler)
         try:
@@ -193,16 +190,16 @@ async def sweep(
     stopper = stopper or Stopper()
     me = await client.get_me()
     if me is None or me.bot:
-        ui.say("Это не вход в ваш аккаунт Telegram. Выйдите (tgsweep --logout) и войдите заново.")
+        ui.say(t("not_personal"))
         return 1
-    ui.say(f"Аккаунт: {_name(me)}")
+    ui.say(t("account", name=_name(me)))
 
-    retention = await ui.choose("Какие ваши сообщения удалить?", RETENTION_CHOICES)
+    retention = await ui.choose(t("which_messages"), retention_choices())
     if retention is None:
-        ui.say("Ничего не удалено.")
+        ui.say(t("nothing_deleted"))
         return 0
 
-    ui.say("Ищу ваши сообщения в группах и комментарии к постам. В больших чатах это может занять несколько минут.")
+    ui.say(t("searching"))
     reaction_state = home.load_state()
     try:
         plan = await cleanup.build_plan(
@@ -213,34 +210,33 @@ async def sweep(
         ui.progress(None)
     cleanup.keep_empty_scans(plan, reaction_state)
     home.save_state(reaction_state)
-    ui.say(f"Поиск занял {duration(plan.stats.seconds)}, просмотрено {plural(plan.stats.chats, 'чат', 'чата', 'чатов')}.")
+    ui.say(t("search_took", duration=duration(plan.stats.seconds), chats=plural(plan.stats.chats, "chat")))
     _say_skipped(ui, plan)
 
-    found = [t for t in plan.targets if t.message_ids or t.reaction_ids]
+    found = [target for target in plan.targets if target.message_ids or target.reaction_ids]
     if not found:
         if retention == 0:
-            ui.say("Удалять нечего: ваших сообщений в группах нет.")
+            ui.say(t("nothing_found"))
         else:
-            ui.say(
-                f"Удалять нечего: ваших сообщений старше {plural(retention, 'дня', 'дней', 'дней')} нет. "
-                "Чтобы удалить и свежие, выберите «Все, даже сегодняшние»."
-            )
+            ui.say(t("nothing_older", days=plural(retention, "day_older")))
         return 0
 
-    picked = await ui.pick("Отметьте чаты, где удалить ваши сообщения:", [row(t) for t in found])
+    picked = await ui.pick(t("pick_chats"), [row(target) for target in found])
     if not picked:
-        ui.say("Ни один чат не отмечен, ничего не удалено.")
+        ui.say(t("none_picked"))
         return 0
     chosen = [found[i] for i in sorted(set(picked))]
-    m, c, r = (sum(x) for x in zip(*(target_counts(t) for t in chosen)))
+    m, c, r = (sum(x) for x in zip(*(target_counts(target) for target in chosen)))
     total = m + c + r
-    ui.say(
-        f"Будет удалено: {counts(m, c, r)} в {plural(len(chosen), 'чате', 'чатах', 'чатах')}. "
-        f"Вернуть их будет нельзя. Это займёт примерно {plural(estimate_minutes(chosen, policy.pause_s), 'минуту', 'минуты', 'минут')}."
-    )
-    typed = await ui.type_in(f"Чтобы подтвердить, введите число {total}:")
+    ui.say(t(
+        "will_delete",
+        counts=counts(m, c, r),
+        chats=plural(len(chosen), "chat_in"),
+        minutes=plural(estimate_minutes(chosen, policy.pause_s), "minute"),
+    ))
+    typed = await ui.type_in(t("confirm_number", total=total))
     if (typed or "").strip() != str(total):
-        ui.say("Число не совпало, ничего не удалено.")
+        ui.say(t("number_mismatch"))
         return 0
 
     journal = Journal(home.journal_file)
@@ -261,26 +257,23 @@ def _say_skipped(ui: UI, plan: Plan) -> None:
     by_reason: dict[str, int] = {}
     for _, _, reason in plan.skipped:
         by_reason[reason] = by_reason.get(reason, 0) + 1
-    lines = [f"  {SKIP_NOTES[r]}: {n}" for r, n in by_reason.items() if r in SKIP_NOTES]
+    lines = [f"  {skip_note(r)}: {n}" for r, n in by_reason.items() if r in SKIP_NOTES]
     if lines:
-        ui.say("Не трогаю:\n" + "\n".join(lines))
+        ui.say(t("skipped_header") + "\n" + "\n".join(lines))
 
 
 def _say_report(ui: UI, report: ApplyReport, home: Home) -> None:
-    lines = [
-        f"Готово. Удалено сообщений: {report.messages}, комментариев: {report.comments}, "
-        f"снято реакций: {report.reactions}."
-    ]
+    lines = [t("report_done", messages=report.messages, comments=report.comments, reactions=report.reactions)]
     missing, refused, failed = report.missing, report.refused, report.failed
     if missing:
-        lines.append(f"Уже удалены раньше: {missing}.")
+        lines.append(t("report_missing", missing=missing))
     if refused:
-        lines.append(f"Не тронуты, потому что оказались не вашими: {refused}.")
+        lines.append(t("report_refused", refused=refused))
     if failed:
-        lines.append(f"Не удалось удалить: {failed}. Запустите tgsweep ещё раз позже.")
+        lines.append(t("report_failed", failed=failed))
     if report.stopped:
-        lines.append("Остановлено до конца. Оставшееся найдётся при следующем запуске.")
-    lines.append(f"Журнал без текстов сообщений: {home.journal_file}")
+        lines.append(t("report_stopped"))
+    lines.append(t("report_journal", path=home.journal_file))
     ui.say("\n".join(lines))
 
 

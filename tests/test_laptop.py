@@ -16,10 +16,11 @@ import pytest
 
 from fake import ME, NOW, FakeClient
 from tgsweep import app, cli, home as home_mod
-from tgsweep.app import Stopper, plural, sweep
+from tgsweep.app import Stopper, sweep
 from tgsweep.cleanup import Policy
 from tgsweep.errors import ConfigError
 from tgsweep.home import Home, load_credentials, parse_credentials
+from tgsweep.i18n import plural
 
 pytestmark = pytest.mark.anyio
 
@@ -65,7 +66,7 @@ class ScriptedUI:
 
     async def type_in(self, prompt):
         self.questions.append(prompt)
-        expected = re.fullmatch(r"Чтобы подтвердить, введите число (\d+):", prompt).group(1)
+        expected = re.fullmatch(r"(?:Чтобы подтвердить, введите число|To confirm, type the number) (\d+):", prompt).group(1)
         return self.confirm(expected) if self.confirm else expected
 
     def ask_secret(self, prompt):
@@ -420,14 +421,14 @@ def test_home_env_override(tmp_path):
 
 
 def test_russian_plurals():
-    assert [plural(n, "сообщение", "сообщения", "сообщений") for n in (1, 2, 5, 11, 12, 21, 22, 25, 111)] == [
+    assert [plural(n, "message") for n in (1, 2, 5, 11, 12, 21, 22, 25, 111)] == [
         "1 сообщение", "2 сообщения", "5 сообщений", "11 сообщений", "12 сообщений",
         "21 сообщение", "22 сообщения", "25 сообщений", "111 сообщений",
     ]
 
 
 def test_retention_menu_puts_all_first():
-    assert app.RETENTION_CHOICES[0] == ("Все, даже сегодняшние", 0)
+    assert app.retention_choices()[0] == ("Все, даже сегодняшние", 0)
 
 
 def test_command_refuses_without_a_terminal(monkeypatch, capsys, tmp_path):
@@ -441,7 +442,7 @@ def test_version(capsys):
     with pytest.raises(SystemExit) as exc:
         cli.main(["--version"])
     assert exc.value.code == 0
-    assert capsys.readouterr().out.strip() == "tgsweep 0.1.1"
+    assert capsys.readouterr().out.strip() == "tgsweep 0.2.0"
 
 
 async def test_backing_out_of_the_number_deletes_nothing(laptop):
@@ -471,7 +472,7 @@ DOWN, ENTER, CTRL_C = "\x1b[B", "\r", "\x03"
 async def test_terminal_choose_runs_inside_the_client_loop(terminal):
     pipe, ui = terminal
     pipe.send_text(DOWN + ENTER)
-    assert await ui.choose("Q", app.RETENTION_CHOICES) == 1
+    assert await ui.choose("Q", app.retention_choices()) == 1
 
 
 async def test_terminal_pick_starts_with_nothing_ticked(terminal):
@@ -510,7 +511,7 @@ async def test_terminal_pick_unticks_all_on_the_russian_layout(terminal):
 async def test_terminal_choose_moves_down_on_the_russian_layout(terminal):
     pipe, ui = terminal
     pipe.send_text("о" + ENTER)
-    assert await ui.choose("Q", app.RETENTION_CHOICES) == 1
+    assert await ui.choose("Q", app.retention_choices()) == 1
 
 
 async def test_terminal_yes_no_takes_a_no_on_the_russian_layout(terminal):

@@ -1,6 +1,6 @@
 [project]
 name = "tgsweep"
-version = "0.1.1"
+version = "0.2.0"
 description = "Delete your own Telegram messages from the chats you pick"
 readme = "README.md"
 license = "MIT"

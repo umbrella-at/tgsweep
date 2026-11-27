@@ -19,13 +19,13 @@ import questionary
 from prompt_toolkit.key_binding import KeyBindings, merge_key_bindings
 from wcwidth import wcswidth, wcwidth
 
+from .i18n import t
+
 # The letters on the same keys in the Russian layout. A terminal sends the letter, not the key,
 # so with the Russian layout on, the key marked A sends «ф» and questionary's «a» does nothing.
 LATIN_KEYS = "qwertyuiopasdfghjklzxcvbnm"
 RUSSIAN_KEYS = "йцукенгшщзфывапролдячсмить"
 
-CHOOSE_HINT = "(стрелки и Enter)"
-PICK_HINT = "(стрелки двигают, пробел отмечает, a отмечает все, Enter продолжает)"
 SPINNER = "|/-\\"  # plain ASCII: every console font has it
 REDRAW_S = 0.25
 # The terminal echoes ^C after the line; the next redraw wipes these extra columns too.
@@ -175,6 +175,14 @@ class StatusLine:
             self.draw()
 
 
+def choose_hint() -> str:
+    return t("choose_hint")
+
+
+def pick_hint() -> str:
+    return t("pick_hint")
+
+
 def with_russian_keys(question: questionary.Question) -> questionary.Question:
     """Every letter shortcut of the question also works on the Russian layout: «ф» like a, «н» like y, «т» like n."""
     russian = dict(zip(LATIN_KEYS + LATIN_KEYS.upper(), RUSSIAN_KEYS + RUSSIAN_KEYS.upper()))
@@ -221,7 +229,7 @@ class TerminalUI:
         return await self._answer(questionary.select(
             question,
             choices=[questionary.Choice(title=label, value=value) for label, value in choices],
-            instruction=CHOOSE_HINT,
+            instruction=choose_hint(),
             **self.io,
         ))
 
@@ -229,7 +237,7 @@ class TerminalUI:
         return await self._answer(questionary.checkbox(
             question,
             choices=[questionary.Choice(title=text, value=i, checked=False) for i, text in enumerate(rows)],
-            instruction=PICK_HINT,
+            instruction=pick_hint(),
             **self.io,
         ))
 

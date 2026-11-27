@@ -9,8 +9,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping
 
+from . import i18n
 from .errors import ConfigError
 from .files import DIR_MODE, secure_file, write_private
+from .i18n import t
 
 APP = "tgsweep"
 HOME_ENV = "TGSWEEP_HOME"
@@ -54,6 +56,10 @@ class Home:
         return self.root / "state.json"
 
     @property
+    def settings_file(self) -> Path:
+        return self.root / "settings.json"
+
+    @property
     def journal_file(self) -> Path:
         return self.root / "logs" / "actions.jsonl"
 
@@ -84,13 +90,30 @@ class Home:
     def save_state(self, reaction_scan: dict[str, int]) -> None:
         write_private(self.state_file, json.dumps({"reaction_scan": reaction_scan}, indent=2))
 
+    # --- the language chosen with --lang ---
+
+    def saved_lang(self) -> str | None:
+        try:
+            data = json.loads(self.settings_file.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return None  # no file or a broken one: no choice, the system decides
+        lang = data.get("lang") if isinstance(data, dict) else None
+        return lang if lang in i18n.LANGS else None
+
+    def save_lang(self, lang: str) -> None:
+        self.ensure()
+        write_private(self.settings_file, json.dumps({"lang": lang}, indent=2))
+
+    def forget_lang(self) -> None:
+        self.settings_file.unlink(missing_ok=True)
+
 
 def parse_credentials(api_id: str, api_hash: str) -> tuple[int, str]:
     api_id, api_hash = api_id.strip(), api_hash.strip().lower()
     if not api_id.isdigit() or int(api_id) <= 0:
-        raise ConfigError("api_id это число, например 1234567, возьмите его на my.telegram.org")
+        raise ConfigError(t("api_id_format"))
     if not API_HASH_RE.match(api_hash):
-        raise ConfigError("api_hash это 32 знака из цифр и латинских букв a-f, возьмите его на my.telegram.org")
+        raise ConfigError(t("api_hash_format"))
     return int(api_id), api_hash
 
 
@@ -98,16 +121,16 @@ def load_credentials(home: Home, env: Mapping[str, str] = os.environ) -> tuple[i
     """Environment first, then the saved file. None when neither has them."""
     if env.get(API_ID_ENV) or env.get(API_HASH_ENV):
         if not (env.get(API_ID_ENV) and env.get(API_HASH_ENV)):
-            raise ConfigError(f"задайте обе переменные, {API_ID_ENV} и {API_HASH_ENV}, или ни одной")
+            raise ConfigError(t("env_both", a=API_ID_ENV, b=API_HASH_ENV))
         return parse_credentials(env[API_ID_ENV], env[API_HASH_ENV])
     try:
         data = json.loads(home.credentials_file.read_text(encoding="utf-8"))
     except FileNotFoundError:
         return None
     except (OSError, ValueError):
-        raise ConfigError(f"файл {home.credentials_file} повреждён: удалите его и введите данные заново") from None
+        raise ConfigError(t("file_damaged", path=home.credentials_file)) from None
     if not isinstance(data, dict):
-        raise ConfigError(f"файл {home.credentials_file} повреждён: удалите его и введите данные заново")
+        raise ConfigError(t("file_damaged", path=home.credentials_file))
     return parse_credentials(str(data.get("api_id", "")), str(data.get("api_hash", "")))
 
 

@@ -67,6 +67,8 @@ tgsweep
 
 Выйти позже: `tgsweep --logout`. Сеанс можно завершить и в самом Telegram: Настройки, Устройства, сеанс tgsweep, «Завершить сеанс».
 
+Язык программы выбирается по системе: русский, если система на русском, иначе английский. Вручную: `tgsweep --lang ru` или `--lang en`, выбор запоминается; вернуть автоматический: `--lang auto`. Переменная `TGSWEEP_LANG` (ru, en или auto) важнее сохранённого выбора.
+
 ## Где лежат файлы
 
 | Система | Папка |
@@ -75,7 +77,7 @@ tgsweep
 | Windows | `%LOCALAPPDATA%\tgsweep` |
 | Linux | `~/.local/share/tgsweep` |
 
-Там файл входа (`tgsweep.session`), api_id и api_hash (`credentials.json`) и журнал удалений `logs/actions.jsonl`: номера чатов и сообщений, без текстов. Другую папку можно задать переменной `TGSWEEP_HOME`.
+Там файл входа (`tgsweep.session`), api_id и api_hash (`credentials.json`), `settings.json` с выбранным языком, если вы его меняли, и журнал удалений `logs/actions.jsonl`: номера чатов и сообщений, без текстов. Другую папку можно задать переменной `TGSWEEP_HOME`.
 
 ## Удаление программы
 

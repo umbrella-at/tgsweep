@@ -230,13 +230,14 @@ def test_caddy_site_matches_the_page():
 def test_site_mockups_match_program():
     # The terminal mockups on the page repeat the program's output word for word. A line can
     # appear in several mockups, so every place that starts like it must go on exactly like it.
-    from tgsweep import app, cli, signin, ui
+    from tgsweep import app, cli, i18n, signin, ui
 
+    i18n.set_lang("ru")  # the page is in Russian
     page = (REPO / "site" / "index.html").read_text(encoding="utf-8")
     text = html.unescape(re.sub(r"<[^>]+>", "", page))
-    lines = [note for reason, note in app.SKIP_NOTES.items() if reason != "unsupported"]
-    lines += [ui.PICK_HINT, ui.CHOOSE_HINT, signin.QR_HINT, cli.LOGIN_HELP]
-    lines += [line.strip() for line in cli.CREDENTIALS_HELP.splitlines()]
+    lines = [app.skip_note(reason) for reason in app.SKIP_NOTES if reason != "unsupported"]
+    lines += [ui.pick_hint(), ui.choose_hint(), signin.qr_hint(), cli.login_help()]
+    lines += [line.strip() for line in cli.credentials_help().splitlines()]
     assert len(lines) == 12
     missing = [line for line in lines if line not in text]
     assert missing == []
