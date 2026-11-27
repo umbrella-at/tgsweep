@@ -145,7 +145,7 @@ async def test_picker_never_lists_private_or_own_chats(laptop):
     ui = ScriptedUI(retention=0, pick=lambda rows: [])
     await run_sweep(client, ui, laptop)
     assert ui.rows == ["Chat with friends: 6 сообщений", "Work chat: 1 сообщение"]
-    assert "личные чаты и боты: tgsweep их не открывает: 1" in ui.text
+    assert "личные чаты и боты (их не открываю): 1" in ui.text
     assert "чаты, которые вы создали" in ui.text
 
 

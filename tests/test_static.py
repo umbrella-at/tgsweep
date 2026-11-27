@@ -227,6 +227,23 @@ def test_caddy_site_matches_the_page():
     assert not [d for d in directives if d.startswith(("log", "import"))]
 
 
+def test_site_mockups_match_program():
+    # The terminal mockups on the page repeat the program's output word for word. A line can
+    # appear in several mockups, so every place that starts like it must go on exactly like it.
+    from tgsweep import app, cli, signin, ui
+
+    page = (REPO / "site" / "index.html").read_text(encoding="utf-8")
+    text = html.unescape(re.sub(r"<[^>]+>", "", page))
+    lines = [note for reason, note in app.SKIP_NOTES.items() if reason != "unsupported"]
+    lines += [ui.PICK_HINT, ui.CHOOSE_HINT, signin.QR_HINT, cli.LOGIN_HELP]
+    lines += [line.strip() for line in cli.CREDENTIALS_HELP.splitlines()]
+    assert len(lines) == 12
+    missing = [line for line in lines if line not in text]
+    assert missing == []
+    stale = [line for line in lines if text.count(line[:20]) != text.count(line)]
+    assert stale == []
+
+
 def test_link_preview_image_is_published():
     # Telegram builds the link preview from og:image: an absolute URL to a file the deploy uploads.
     page = (REPO / "site" / "index.html").read_text(encoding="utf-8")

@@ -6,14 +6,14 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://gc.zgo.at; connect-src 'self' https://*.goatcounter.com; img-src 'self' data: https://*.goatcounter.com; style-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <title>tgsweep: удалить свои сообщения из групп Telegram</title>
-<meta name="description" content="Бесплатная программа для компьютера. Находит ваши сообщения, комментарии и реакции в группах Telegram и удаляет те, что вы отметите. Работает на вашем компьютере.">
+<meta name="description" content="Бесплатная программа с открытым кодом. Находит ваши сообщения, комментарии и реакции в группах Telegram и удаляет их в чатах, которые вы отметите. Всё работает на вашем компьютере.">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#E3EAE4" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0F1914" media="(prefers-color-scheme: dark)">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://tgsweep.atworks.dev/">
 <meta property="og:title" content="tgsweep: удалить свои сообщения из групп Telegram">
-<meta property="og:description" content="Программа для компьютера: находит ваши сообщения в группах и удаляет те, что вы отметите. Код открыт.">
+<meta property="og:description" content="Программа для компьютера: находит ваши сообщения в группах Telegram и удаляет их в чатах, которые вы отметите. Код открыт.">
 <meta property="og:site_name" content="tgsweep">
 <meta property="og:locale" content="ru_RU">
 <meta property="og:image" content="https://tgsweep.atworks.dev/og.png">
@@ -65,9 +65,9 @@
 Ищу ваши сообщения в группах и комментарии к постам. В больших чатах это может занять несколько минут.
 Поиск занял 50 с, просмотрено 21 чат.
 Не трогаю:
-  личные чаты и боты: tgsweep их не открывает: 3
-  чаты, которые вы создали: пропущены, чтобы не опустошить свою же группу: 1
-  каналы: свои посты в каналах удаляйте в самом Telegram, комментарии к постам в плане есть: 1
+  личные чаты и боты (их не открываю): 3
+  чаты, которые вы создали (пропускаю, чтобы не опустошить вашу же группу): 1
+  каналы (свои посты удаляйте в самом Telegram, комментарии к постам ищу отдельно): 1
 <span id="demo-question"><span class="q">?</span><span class="b"> Отметьте чаты, где удалить ваши сообщения: </span><span id="demo-instr">(стрелки двигают, пробел отмечает, a отмечает все, Enter продолжает)</span></span></pre>
 <div id="demo-list" class="opts" role="listbox" tabindex="0" aria-multiselectable="true" aria-label="Чаты, где удалить ваши сообщения" aria-activedescendant="demo-0">
 <div class="opt" role="option" id="demo-0" aria-selected="false" data-messages="37" data-reactions="0"><span class="row"> <span class="ptr">»</span> <span class="lbl">○ Соседи по дому: 37 сообщений</span></span></div>
@@ -88,7 +88,7 @@
 <section class="install" id="install" aria-labelledby="install-title">
   <div class="wrap">
     <h2 id="install-title">Как установить и запустить</h2>
-    <p class="intro">Понадобятся компьютер, телефон с Telegram и минут пятнадцать в первый раз. Потом хватит одной команды.</p>
+    <p class="intro">Понадобятся компьютер, телефон с Telegram и минут пятнадцать в первый раз. Потом хватит одной команды и QR-кода.</p>
 
     <fieldset class="os-switch" id="os-switch">
       <legend>Ваш компьютер</legend>
@@ -110,7 +110,7 @@
           </div>
           <div data-os="mac">
             <p class="os-name">macOS</p>
-            <p>Нажмите <kbd>Cmd</kbd>+<kbd>Пробел</kbd>, наберите <kbd>Терминал</kbd> и нажмите <kbd>Enter</kbd>.</p>
+            <p>Нажмите <kbd>Cmd</kbd>+<kbd>Пробел</kbd>, наберите <kbd>Терминал</kbd> (в английской системе <kbd>Terminal</kbd>) и нажмите <kbd>Enter</kbd>.</p>
             <p>Это окно для команд. Команду с этой страницы вставляйте в него через <kbd>Cmd</kbd>+<kbd>V</kbd> и нажимайте <kbd>Enter</kbd>.</p>
           </div>
           <div data-os="linux">
@@ -123,8 +123,8 @@
       <li class="step">
         <span class="num" aria-hidden="true">2</span>
         <div class="step-body">
-          <h4>Поставьте uv</h4>
-          <p>uv устанавливает программы на Python, его делает компания Astral. Python отдельно ставить не нужно: uv скачает его сам.</p>
+          <h4>Установите uv</h4>
+          <p>uv устанавливает программы на Python, его разрабатывает компания Astral. Python отдельно устанавливать не нужно: uv скачает его сам.</p>
           <div data-os="win">
             <p class="os-name">Windows</p>
             <div class="cmd"><code>powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/<wbr>uv/<wbr>install.ps1 | iex"</code><button type="button" class="copy">Копировать</button></div>
@@ -164,19 +164,19 @@ To add $HOME/.local/bin to your PATH, either restart your shell or run:
       <li class="step">
         <span class="num" aria-hidden="true">4</span>
         <div class="step-body">
-          <h4>Поставьте tgsweep</h4>
+          <h4>Установите tgsweep</h4>
           <div class="cmd"><code>uv tool install https://github.com/<wbr>umbrella-at/<wbr>tgsweep/<wbr>archive/<wbr>refs/<wbr>heads/<wbr>main.zip</code><button type="button" class="copy">Копировать</button></div>
-          <p>uv скачает программу из открытого репозитория на GitHub и всё, что ей нужно. Git для этого не нужен.</p>
+          <p>uv скачает программу из открытого репозитория на GitHub вместе со всем необходимым. Git для этого не понадобится.</p>
           <figure class="shot">
             <div class="term"><div class="term-bar" aria-hidden="true">Терминал</div><pre class="term-body"><span class="pr">maria@MacBook ~ %</span> uv tool install https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip
 Downloading cpython-3.14.7-macos-aarch64-none (download) (25.3MiB)
  Downloaded cpython-3.14.7-macos-aarch64-none (download)
 Resolved 16 packages in 6.44s
-<span class="note">… ещё 24 строк: что скачано и поставлено</span>
+<span class="note">… ещё 24 строки: что скачано и установлено</span>
 Installed 1 executable: tgsweep</pre></div>
-            <figcaption>Последняя строка <samp>Installed 1 executable: tgsweep</samp> значит, что всё готово. В Windows вывод такой же.</figcaption>
+            <figcaption>Последняя строка <samp>Installed 1 executable: tgsweep</samp> означает, что всё готово. В Windows вывод почти такой же.</figcaption>
           </figure>
-          <p class="aside">Если терминал отвечает, что не знает команду uv (<samp>command not found</samp> или «не распознано как имя командлета»), значит, окно не открыто заново. Вернитесь к шагу 3.</p>
+          <p class="aside">Если терминал отвечает, что не знает команду uv (<samp>command not found</samp> или «не распознано как имя командлета»), скорее всего, окно не открыли заново. Вернитесь к шагу 3, а если не поможет, повторите шаг 2.</p>
         </div>
       </li>
     </ol>
@@ -187,7 +187,7 @@ Installed 1 executable: tgsweep</pre></div>
         <span class="num" aria-hidden="true">5</span>
         <div class="step-body">
           <h4>Получите api_id и api_hash</h4>
-          <p>Программам вне официальных приложений Telegram нужен свой ключ. Он бесплатный, его выдаёт сам Telegram за пару минут.</p>
+          <p>Сторонним программам для Telegram нужен свой ключ. Он бесплатный, его выдаёт сам Telegram за пару минут.</p>
           <ol class="substeps">
             <li>Откройте <a href="https://my.telegram.org">my.telegram.org</a> и введите номер телефона в международном формате, например <samp>+79991234567</samp>. Код придёт не по SMS, а в сам Telegram.</li>
             <li>Выберите <b>API development tools</b>.</li>
@@ -206,7 +206,7 @@ Installed 1 executable: tgsweep</pre></div>
         <div class="step-body">
           <h4>Запустите tgsweep</h4>
           <div class="cmd"><code>tgsweep</code><button type="button" class="copy">Копировать</button></div>
-          <p>В первый раз программа спросит api_id и api_hash. Вставьте каждый и нажмите <kbd>Enter</kbd>. api_hash при вводе не виден, так и задумано. Ключ сохранится на этом компьютере, больше его спрашивать не будут.</p>
+          <p>В первый раз программа спросит api_id и api_hash. Вставьте их по очереди, после каждого нажмите <kbd>Enter</kbd>. api_hash при вводе не виден, так и задумано. Ключ сохранится на этом компьютере, больше программа его не спросит.</p>
           <figure class="shot">
             <div class="term"><div class="term-bar" aria-hidden="true">Терминал</div><pre class="term-body"><span class="pr">maria@MacBook ~ %</span> tgsweep
 Для работы нужны api_id и api_hash. Их выдаёт сам Telegram, это бесплатно:
@@ -226,12 +226,12 @@ api_hash (при вводе не виден): <span class="cur" aria-hidden="tru
           <h4>Войдите по QR-коду</h4>
           <p>В терминале появится QR-код. На телефоне откройте Telegram: Настройки, Устройства, «Подключить устройство», и наведите камеру на код.</p>
           <figure class="shot">
-            <div class="term"><div class="term-bar" aria-hidden="true">Терминал</div><pre class="term-body">Вход в Telegram. tgsweep увидит только группы и каналы, личные чаты он не открывает.
+            <div class="term"><div class="term-bar" aria-hidden="true">Терминал</div><pre class="term-body">Вход в Telegram. tgsweep работает только с группами и каналами, личные чаты он не открывает.
 <svg class="qr" viewBox="0 0 41 42" role="img" aria-label="Образец QR-кода, отсканировать его нельзя" shape-rendering="crispEdges"><rect width="41" height="42" fill="#fff"/><path d="M4 4h1v1h-1zM4 5h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM8 4h1v1h-1zM9 4h1v1h-1zM10 4h1v1h-1zM10 5h1v1h-1zM12 4h1v1h-1zM12 5h1v1h-1zM13 4h1v1h-1zM14 4h1v1h-1zM15 4h1v1h-1zM15 5h1v1h-1zM17 4h1v1h-1zM18 4h1v1h-1zM19 4h1v1h-1zM20 5h1v1h-1zM21 4h1v1h-1zM22 4h1v1h-1zM23 4h1v1h-1zM24 5h1v1h-1zM25 4h1v1h-1zM26 4h1v1h-1zM27 4h1v1h-1zM28 5h1v1h-1zM30 4h1v1h-1zM30 5h1v1h-1zM31 4h1v1h-1zM32 4h1v1h-1zM33 4h1v1h-1zM34 4h1v1h-1zM35 4h1v1h-1zM36 4h1v1h-1zM36 5h1v1h-1zM4 6h1v1h-1zM4 7h1v1h-1zM6 6h1v1h-1zM6 7h1v1h-1zM7 6h1v1h-1zM7 7h1v1h-1zM8 6h1v1h-1zM8 7h1v1h-1zM10 6h1v1h-1zM10 7h1v1h-1zM13 6h1v1h-1zM15 7h1v1h-1zM16 7h1v1h-1zM17 6h1v1h-1zM18 7h1v1h-1zM19 6h1v1h-1zM20 6h1v1h-1zM21 6h1v1h-1zM22 7h1v1h-1zM23 6h1v1h-1zM24 6h1v1h-1zM25 6h1v1h-1zM26 7h1v1h-1zM27 6h1v1h-1zM28 6h1v1h-1zM30 6h1v1h-1zM30 7h1v1h-1zM32 6h1v1h-1zM32 7h1v1h-1zM33 6h1v1h-1zM33 7h1v1h-1zM34 6h1v1h-1zM34 7h1v1h-1zM36 6h1v1h-1zM36 7h1v1h-1zM4 8h1v1h-1zM4 9h1v1h-1zM6 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1zM10 8h1v1h-1zM10 9h1v1h-1zM12 8h1v1h-1zM12 9h1v1h-1zM13 9h1v1h-1zM14 9h1v1h-1zM15 8h1v1h-1zM16 8h1v1h-1zM16 9h1v1h-1zM17 8h1v1h-1zM18 8h1v1h-1zM19 8h1v1h-1zM20 9h1v1h-1zM21 8h1v1h-1zM22 8h1v1h-1zM23 8h1v1h-1zM24 9h1v1h-1zM25 8h1v1h-1zM26 8h1v1h-1zM27 8h1v1h-1zM28 9h1v1h-1zM30 8h1v1h-1zM30 9h1v1h-1zM32 8h1v1h-1zM33 8h1v1h-1zM34 8h1v1h-1zM36 8h1v1h-1zM36 9h1v1h-1zM4 10h1v1h-1zM5 10h1v1h-1zM6 10h1v1h-1zM7 10h1v1h-1zM8 10h1v1h-1zM9 10h1v1h-1zM10 10h1v1h-1zM12 10h1v1h-1zM12 11h1v1h-1zM13 11h1v1h-1zM14 10h1v1h-1zM16 10h1v1h-1zM18 10h1v1h-1zM18 11h1v1h-1zM20 10h1v1h-1zM22 10h1v1h-1zM22 11h1v1h-1zM24 10h1v1h-1zM26 10h1v1h-1zM26 11h1v1h-1zM28 10h1v1h-1zM30 10h1v1h-1zM31 10h1v1h-1zM32 10h1v1h-1zM33 10h1v1h-1zM34 10h1v1h-1zM35 10h1v1h-1zM36 10h1v1h-1zM4 12h1v1h-1zM4 13h1v1h-1zM5 12h1v1h-1zM5 13h1v1h-1zM6 12h1v1h-1zM7 13h1v1h-1zM9 12h1v1h-1zM9 13h1v1h-1zM10 12h1v1h-1zM12 12h1v1h-1zM13 12h1v1h-1zM15 12h1v1h-1zM16 12h1v1h-1zM16 13h1v1h-1zM17 12h1v1h-1zM19 12h1v1h-1zM20 12h1v1h-1zM20 13h1v1h-1zM21 12h1v1h-1zM23 12h1v1h-1zM24 12h1v1h-1zM24 13h1v1h-1zM25 12h1v1h-1zM27 12h1v1h-1zM28 12h1v1h-1zM28 13h1v1h-1zM29 12h1v1h-1zM30 12h1v1h-1zM30 13h1v1h-1zM31 12h1v1h-1zM31 13h1v1h-1zM32 12h1v1h-1zM33 13h1v1h-1zM34 13h1v1h-1zM35 12h1v1h-1zM36 12h1v1h-1zM36 13h1v1h-1zM4 14h1v1h-1zM4 15h1v1h-1zM5 14h1v1h-1zM10 14h1v1h-1zM11 15h1v1h-1zM12 14h1v1h-1zM13 14h1v1h-1zM14 14h1v1h-1zM14 15h1v1h-1zM15 15h1v1h-1zM16 14h1v1h-1zM16 15h1v1h-1zM17 14h1v1h-1zM18 14h1v1h-1zM18 15h1v1h-1zM19 14h1v1h-1zM21 14h1v1h-1zM22 14h1v1h-1zM22 15h1v1h-1zM23 14h1v1h-1zM25 14h1v1h-1zM26 14h1v1h-1zM26 15h1v1h-1zM27 14h1v1h-1zM30 15h1v1h-1zM31 15h1v1h-1zM32 14h1v1h-1zM33 15h1v1h-1zM35 14h1v1h-1zM35 15h1v1h-1zM36 14h1v1h-1zM36 15h1v1h-1zM4 16h1v1h-1zM6 16h1v1h-1zM6 17h1v1h-1zM7 17h1v1h-1zM9 16h1v1h-1zM10 16h1v1h-1zM11 16h1v1h-1zM12 16h1v1h-1zM12 17h1v1h-1zM13 16h1v1h-1zM14 16h1v1h-1zM14 17h1v1h-1zM17 16h1v1h-1zM19 16h1v1h-1zM20 16h1v1h-1zM20 17h1v1h-1zM21 16h1v1h-1zM23 16h1v1h-1zM24 16h1v1h-1zM24 17h1v1h-1zM25 16h1v1h-1zM27 16h1v1h-1zM28 16h1v1h-1zM28 17h1v1h-1zM29 16h1v1h-1zM29 17h1v1h-1zM30 16h1v1h-1zM30 17h1v1h-1zM31 16h1v1h-1zM31 17h1v1h-1zM33 16h1v1h-1zM33 17h1v1h-1zM34 17h1v1h-1zM36 17h1v1h-1zM4 18h1v1h-1zM4 19h1v1h-1zM7 18h1v1h-1zM10 18h1v1h-1zM12 19h1v1h-1zM13 18h1v1h-1zM13 19h1v1h-1zM14 18h1v1h-1zM15 18h1v1h-1zM17 18h1v1h-1zM18 18h1v1h-1zM18 19h1v1h-1zM19 18h1v1h-1zM21 18h1v1h-1zM22 18h1v1h-1zM22 19h1v1h-1zM23 18h1v1h-1zM25 18h1v1h-1zM26 18h1v1h-1zM26 19h1v1h-1zM27 18h1v1h-1zM29 19h1v1h-1zM32 19h1v1h-1zM33 18h1v1h-1zM33 19h1v1h-1zM34 18h1v1h-1zM35 18h1v1h-1zM36 18h1v1h-1zM36 19h1v1h-1zM5 20h1v1h-1zM6 21h1v1h-1zM8 20h1v1h-1zM9 21h1v1h-1zM10 20h1v1h-1zM11 21h1v1h-1zM12 21h1v1h-1zM13 20h1v1h-1zM14 20h1v1h-1zM14 21h1v1h-1zM15 20h1v1h-1zM16 20h1v1h-1zM16 21h1v1h-1zM17 20h1v1h-1zM19 20h1v1h-1zM20 20h1v1h-1zM20 21h1v1h-1zM21 20h1v1h-1zM23 20h1v1h-1zM24 20h1v1h-1zM24 21h1v1h-1zM25 20h1v1h-1zM27 20h1v1h-1zM28 20h1v1h-1zM28 21h1v1h-1zM30 20h1v1h-1zM31 20h1v1h-1zM31 21h1v1h-1zM33 20h1v1h-1zM33 21h1v1h-1zM34 21h1v1h-1zM35 20h1v1h-1zM35 21h1v1h-1zM36 21h1v1h-1zM4 23h1v1h-1zM5 22h1v1h-1zM5 23h1v1h-1zM7 22h1v1h-1zM7 23h1v1h-1zM10 22h1v1h-1zM11 22h1v1h-1zM11 23h1v1h-1zM12 23h1v1h-1zM13 22h1v1h-1zM13 23h1v1h-1zM15 23h1v1h-1zM16 22h1v1h-1zM16 23h1v1h-1zM17 22h1v1h-1zM18 22h1v1h-1zM18 23h1v1h-1zM19 22h1v1h-1zM21 22h1v1h-1zM22 22h1v1h-1zM22 23h1v1h-1zM23 22h1v1h-1zM25 22h1v1h-1zM26 22h1v1h-1zM26 23h1v1h-1zM27 22h1v1h-1zM29 22h1v1h-1zM29 23h1v1h-1zM30 22h1v1h-1zM31 23h1v1h-1zM32 23h1v1h-1zM33 23h1v1h-1zM35 22h1v1h-1zM35 23h1v1h-1zM36 22h1v1h-1zM36 23h1v1h-1zM6 24h1v1h-1zM6 25h1v1h-1zM8 25h1v1h-1zM9 24h1v1h-1zM10 24h1v1h-1zM12 24h1v1h-1zM12 25h1v1h-1zM13 24h1v1h-1zM14 24h1v1h-1zM17 24h1v1h-1zM19 24h1v1h-1zM20 24h1v1h-1zM20 25h1v1h-1zM21 24h1v1h-1zM23 24h1v1h-1zM24 24h1v1h-1zM24 25h1v1h-1zM25 24h1v1h-1zM27 24h1v1h-1zM28 24h1v1h-1zM28 25h1v1h-1zM29 25h1v1h-1zM30 24h1v1h-1zM31 24h1v1h-1zM31 25h1v1h-1zM33 24h1v1h-1zM33 25h1v1h-1zM36 24h1v1h-1zM36 25h1v1h-1zM4 26h1v1h-1zM5 26h1v1h-1zM6 26h1v1h-1zM7 26h1v1h-1zM8 26h1v1h-1zM10 26h1v1h-1zM11 26h1v1h-1zM12 26h1v1h-1zM12 27h1v1h-1zM13 26h1v1h-1zM13 27h1v1h-1zM14 27h1v1h-1zM15 26h1v1h-1zM17 26h1v1h-1zM18 26h1v1h-1zM18 27h1v1h-1zM19 26h1v1h-1zM21 26h1v1h-1zM22 26h1v1h-1zM22 27h1v1h-1zM23 26h1v1h-1zM25 26h1v1h-1zM26 26h1v1h-1zM26 27h1v1h-1zM27 26h1v1h-1zM29 26h1v1h-1zM29 27h1v1h-1zM30 26h1v1h-1zM31 26h1v1h-1zM31 27h1v1h-1zM32 26h1v1h-1zM33 27h1v1h-1zM36 26h1v1h-1zM4 28h1v1h-1zM5 28h1v1h-1zM7 28h1v1h-1zM10 28h1v1h-1zM11 28h1v1h-1zM12 29h1v1h-1zM13 29h1v1h-1zM14 28h1v1h-1zM15 28h1v1h-1zM16 28h1v1h-1zM16 29h1v1h-1zM17 28h1v1h-1zM18 28h1v1h-1zM19 28h1v1h-1zM20 28h1v1h-1zM20 29h1v1h-1zM21 28h1v1h-1zM23 28h1v1h-1zM24 28h1v1h-1zM24 29h1v1h-1zM25 28h1v1h-1zM27 28h1v1h-1zM28 28h1v1h-1zM28 29h1v1h-1zM29 28h1v1h-1zM30 28h1v1h-1zM31 28h1v1h-1zM32 28h1v1h-1zM32 29h1v1h-1zM33 28h1v1h-1zM34 29h1v1h-1zM35 29h1v1h-1zM36 28h1v1h-1zM36 29h1v1h-1zM4 30h1v1h-1zM4 31h1v1h-1zM5 30h1v1h-1zM6 30h1v1h-1zM7 30h1v1h-1zM8 30h1v1h-1zM9 30h1v1h-1zM10 30h1v1h-1zM10 31h1v1h-1zM12 31h1v1h-1zM14 30h1v1h-1zM15 31h1v1h-1zM16 30h1v1h-1zM16 31h1v1h-1zM17 30h1v1h-1zM18 30h1v1h-1zM19 30h1v1h-1zM21 30h1v1h-1zM22 30h1v1h-1zM22 31h1v1h-1zM23 30h1v1h-1zM25 30h1v1h-1zM26 30h1v1h-1zM26 31h1v1h-1zM27 30h1v1h-1zM27 31h1v1h-1zM28 30h1v1h-1zM28 31h1v1h-1zM30 30h1v1h-1zM32 30h1v1h-1zM32 31h1v1h-1zM33 31h1v1h-1zM34 30h1v1h-1zM35 31h1v1h-1zM36 30h1v1h-1zM4 32h1v1h-1zM4 33h1v1h-1zM6 32h1v1h-1zM6 33h1v1h-1zM7 32h1v1h-1zM7 33h1v1h-1zM8 32h1v1h-1zM8 33h1v1h-1zM10 32h1v1h-1zM10 33h1v1h-1zM13 32h1v1h-1zM13 33h1v1h-1zM14 33h1v1h-1zM17 32h1v1h-1zM17 33h1v1h-1zM18 32h1v1h-1zM19 32h1v1h-1zM20 32h1v1h-1zM20 33h1v1h-1zM21 32h1v1h-1zM23 32h1v1h-1zM24 32h1v1h-1zM24 33h1v1h-1zM25 32h1v1h-1zM27 32h1v1h-1zM27 33h1v1h-1zM28 32h1v1h-1zM29 32h1v1h-1zM29 33h1v1h-1zM30 32h1v1h-1zM31 32h1v1h-1zM31 33h1v1h-1zM32 32h1v1h-1zM32 33h1v1h-1zM33 32h1v1h-1zM33 33h1v1h-1zM34 33h1v1h-1zM35 32h1v1h-1zM36 32h1v1h-1zM4 34h1v1h-1zM4 35h1v1h-1zM6 34h1v1h-1zM7 34h1v1h-1zM8 34h1v1h-1zM10 34h1v1h-1zM10 35h1v1h-1zM12 34h1v1h-1zM12 35h1v1h-1zM13 34h1v1h-1zM13 35h1v1h-1zM14 34h1v1h-1zM14 35h1v1h-1zM15 34h1v1h-1zM17 35h1v1h-1zM19 34h1v1h-1zM21 34h1v1h-1zM22 34h1v1h-1zM22 35h1v1h-1zM23 34h1v1h-1zM25 34h1v1h-1zM26 34h1v1h-1zM26 35h1v1h-1zM27 34h1v1h-1zM28 34h1v1h-1zM29 34h1v1h-1zM30 34h1v1h-1zM31 35h1v1h-1zM32 34h1v1h-1zM32 35h1v1h-1zM33 34h1v1h-1zM36 34h1v1h-1zM4 36h1v1h-1zM5 36h1v1h-1zM6 36h1v1h-1zM7 36h1v1h-1zM8 36h1v1h-1zM9 36h1v1h-1zM10 36h1v1h-1zM12 36h1v1h-1zM15 36h1v1h-1zM16 36h1v1h-1zM17 36h1v1h-1zM19 36h1v1h-1zM20 36h1v1h-1zM21 36h1v1h-1zM23 36h1v1h-1zM24 36h1v1h-1zM25 36h1v1h-1zM28 36h1v1h-1zM30 36h1v1h-1zM36 36h1v1h-1zM0 41h1v1h-1zM1 41h1v1h-1zM2 41h1v1h-1zM3 41h1v1h-1zM4 41h1v1h-1zM5 41h1v1h-1zM6 41h1v1h-1zM7 41h1v1h-1zM8 41h1v1h-1zM9 41h1v1h-1zM10 41h1v1h-1zM11 41h1v1h-1zM12 41h1v1h-1zM13 41h1v1h-1zM14 41h1v1h-1zM15 41h1v1h-1zM16 41h1v1h-1zM17 41h1v1h-1zM18 41h1v1h-1zM19 41h1v1h-1zM20 41h1v1h-1zM21 41h1v1h-1zM22 41h1v1h-1zM23 41h1v1h-1zM24 41h1v1h-1zM25 41h1v1h-1zM26 41h1v1h-1zM27 41h1v1h-1zM28 41h1v1h-1zM29 41h1v1h-1zM30 41h1v1h-1zM31 41h1v1h-1zM32 41h1v1h-1zM33 41h1v1h-1zM34 41h1v1h-1zM35 41h1v1h-1zM36 41h1v1h-1zM37 41h1v1h-1zM38 41h1v1h-1zM39 41h1v1h-1zM40 41h1v1h-1z" fill="#132620"/><rect x="8.0" y="15.5" width="25" height="11" rx="1.6" fill="#FFB627" shape-rendering="auto"/><text x="20.5" y="22.6" text-anchor="middle" font-size="4.4" font-weight="600" fill="#132620">образец</text></svg>Отсканируйте код телефоном: Telegram, Настройки, Устройства, «Подключить устройство». Код меняется примерно раз в 30 секунд, новый появится здесь сам.</pre></div>
-            <figcaption>Код здесь закрыт надписью: настоящий появится только в вашем терминале и меняется примерно раз в 30 секунд.</figcaption>
+            <figcaption>Код здесь закрыт надписью: настоящий появится только в вашем терминале.</figcaption>
           </figure>
-          <p>Если на аккаунте стоит облачный пароль, программа спросит и его. Если камеры нет, запустите <code class="inline">tgsweep --code</code>: войти можно по коду, который придёт в Telegram.</p>
-          <p class="aside">Сканируйте только код из своего терминала. Чужой QR-код, присланный кем-то, отдаёт ваш аккаунт ему.</p>
+          <p>Если у вас включён облачный пароль, программа спросит и его. Если отсканировать код не получается, запустите <code class="inline">tgsweep --code</code>: программа спросит номер телефона, а код для входа чаще всего придёт в Telegram на другом вашем устройстве.</p>
+          <p class="aside">Сканируйте только код из своего терминала. Если отсканировать QR-код, который вам кто-то прислал, вы отдадите этому человеку доступ к своему аккаунту.</p>
         </div>
       </li>
 
@@ -249,7 +249,7 @@ api_hash (при вводе не виден): <span class="cur" aria-hidden="tru
  » Старше 7 дней
    Старше 30 дней</pre></div>
           </figure>
-          <p>Потом программа ищет ваши сообщения. В больших чатах это займёт несколько минут, внизу видно, какой чат она сейчас смотрит. Следующий поиск быстрее.</p>
+          <p>Потом программа ищет ваши сообщения. В больших чатах поиск занимает несколько минут. Внизу видно, какой чат программа сейчас просматривает. Следующий поиск пройдёт быстрее.</p>
           <figure class="shot">
             <div class="term"><div class="term-bar" aria-hidden="true">Терминал</div><pre class="term-body"><span class="q">?</span><span class="b"> Какие ваши сообщения удалить? </span><span class="ans">Старше 7 дней</span>
 Ищу ваши сообщения в группах и комментарии к постам. В больших чатах это может занять несколько минут.
@@ -262,13 +262,13 @@ api_hash (при вводе не виден): <span class="cur" aria-hidden="tru
         <span class="num" aria-hidden="true">9</span>
         <div class="step-body">
           <h4>Отметьте чаты</h4>
-          <p>Пробел отмечает чат, <kbd>a</kbd> отмечает все, <kbd>Enter</kbd> продолжает. Сначала не отмечено ничего. Выше списка программа пишет, что пропустила: личные чаты, ботов, ваши группы и каналы.</p>
+          <p><kbd>Пробел</kbd> отмечает чат, <kbd>a</kbd> (в русской раскладке <kbd>ф</kbd>) отмечает все, <kbd>Enter</kbd> продолжает. Сначала ни один чат не отмечен. Над списком программа пишет, что пропустила: личные чаты, ботов, группы, которые вы создали, и каналы.</p>
           <figure class="shot">
             <div class="term"><div class="term-bar" aria-hidden="true">Терминал</div><pre class="term-body">Поиск занял 50 с, просмотрено 21 чат.
 Не трогаю:
-  личные чаты и боты: tgsweep их не открывает: 3
-  чаты, которые вы создали: пропущены, чтобы не опустошить свою же группу: 1
-  каналы: свои посты в каналах удаляйте в самом Telegram, комментарии к постам в плане есть: 1
+  личные чаты и боты (их не открываю): 3
+  чаты, которые вы создали (пропускаю, чтобы не опустошить вашу же группу): 1
+  каналы (свои посты удаляйте в самом Telegram, комментарии к постам ищу отдельно): 1
 <span class="q">?</span><span class="b"> Отметьте чаты, где удалить ваши сообщения: </span>(стрелки двигают, пробел отмечает, a отмечает все, Enter продолжает)
    <span class="rv">● Соседи по дому: 37 сообщений</span>
  » <span class="rv">● Книжный клуб: 12 сообщений, 4 реакции</span>
@@ -287,7 +287,7 @@ api_hash (при вводе не виден): <span class="cur" aria-hidden="tru
             <div class="term"><div class="term-bar" aria-hidden="true">Терминал</div><pre class="term-body">Будет удалено: 49 сообщений, 4 реакции в 2 чатах. Вернуть их будет нельзя. Это займёт примерно 1 минуту.
 <span class="q">?</span><span class="b"> Чтобы подтвердить, введите число 53:</span> <span class="ans">53</span></pre></div>
           </figure>
-          <p>Удаление идёт с паузами, чтобы Telegram не ограничил аккаунт. Если Telegram просит подождать, программа ждёт и пишет об этом. Чтобы остановиться, нажмите <kbd>Ctrl</kbd>+<kbd>C</kbd>: программа закончит текущий запрос, а остальное найдёт при следующем запуске.</p>
+          <p>Удаление идёт с паузами, чтобы Telegram не ограничил аккаунт. Если Telegram просит подождать, программа ждёт и пишет об этом. Чтобы остановиться, нажмите <kbd>Ctrl</kbd>+<kbd>C</kbd><span data-os="mac"> (на Mac тоже Ctrl, не Cmd)</span>: программа закончит текущий запрос, а остальное найдёт при следующем запуске.</p>
           <figure class="shot">
             <div class="term"><div class="term-bar" aria-hidden="true">Терминал</div><pre class="term-body"><span class="q">?</span><span class="b"> Чтобы подтвердить, введите число 53: </span><span class="ans">53</span>
 | 0:04 Удаляю: 37 из 53 (69%) · Соседи по дому</pre></div>
@@ -317,7 +317,7 @@ api_hash (при вводе не виден): <span class="cur" aria-hidden="tru
   <div class="maintain-list">
     <div class="maintain-row">
       <h3>Обновить программу</h3>
-      <p>Та же команда, что при установке, с ключом --reinstall: она скачает свежую версию и поставит её поверх старой.</p>
+      <p>Та же команда, что при установке, но с параметром <code class="inline">--reinstall</code>: она скачает свежую версию и установит её поверх старой.</p>
       <div class="cmd"><code>uv tool install --reinstall https://github.com/<wbr>umbrella-at/<wbr>tgsweep/<wbr>archive/<wbr>refs/<wbr>heads/<wbr>main.zip</code><button type="button" class="copy">Копировать</button></div>
     </div>
     <div class="maintain-row">
@@ -335,7 +335,7 @@ api_hash (при вводе не виден): <span class="cur" aria-hidden="tru
       <div data-os="win"><p class="os-name">Windows</p><div class="cmd"><code>Remove-Item -Recurse -Force "$env:LOCALAPPDATA\tgsweep"</code><button type="button" class="copy">Копировать</button></div></div>
       <div data-os="mac"><p class="os-name">macOS</p><div class="cmd"><code>rm -rf "$HOME/<wbr>Library/<wbr>Application Support/<wbr>tgsweep"</code><button type="button" class="copy">Копировать</button></div></div>
       <div data-os="linux"><p class="os-name">Linux</p><div class="cmd"><code>rm -rf "$HOME/.local/share/tgsweep"</code><button type="button" class="copy">Копировать</button></div></div>
-      <p class="aside">uv можно оставить, он ничего не делает сам. Как удалить и его, написано <a href="https://docs.astral.sh/uv/getting-started/installation/#uninstallation">в документации uv</a>.</p>
+      <p class="aside">uv можно оставить: сам по себе он ничего не запускает. Если захотите удалить и его, инструкция есть <a href="https://docs.astral.sh/uv/getting-started/installation/#uninstallation">в документации uv</a>.</p>
     </div>
   </div>
 </section>
@@ -354,12 +354,12 @@ api_hash (при вводе не виден): <span class="cur" aria-hidden="tru
     </div>
     <div class="why">
       <h3>Зачем свой ключ</h3>
-      <p>Ключ, вход и журнал хранятся только у вас на компьютере. У автора программы нет ни сервера, ни доступа к вашему аккаунту. Общий ключ на всех пользователей Telegram может заблокировать целиком, если кто-то один им злоупотребит. Свой ключ от этого защищает.</p>
+      <p>Ключ, файл входа и журнал хранятся только у вас на компьютере. У программы нет своего сервера, а у автора нет доступа к вашему аккаунту. Общий ключ на всех в открытом коде не спрятать, а опубликованный или замеченный в злоупотреблениях ключ Telegram блокирует, и программа перестала бы работать у всех сразу. Со своим ключом такого не случится.</p>
       <p data-os="win">Всё лежит в папке <samp>%LOCALAPPDATA%\tgsweep</samp>.</p>
       <p data-os="mac">Всё лежит в папке <samp>~/Library/Application Support/tgsweep</samp>.</p>
       <p data-os="linux">Всё лежит в папке <samp>~/.local/share/tgsweep</samp>.</p>
       <h3>Проверьте сами</h3>
-      <p>Код открыт: <a href="https://github.com/umbrella-at/tgsweep">github.com/umbrella-at/tgsweep</a>. Если не читаете код, дайте ссылку любому ИИ-чату и спросите, что программа отправляет и что удаляет. В репозитории есть тесты, которые не дают программе лишних умений: писать сообщения, выходить из групп, удалять чужое.</p>
+      <p>Код открыт: <a href="https://github.com/umbrella-at/tgsweep">github.com/umbrella-at/tgsweep</a>. Если сами код не читаете, дайте ссылку любому ИИ-чату и спросите, что программа отправляет и что удаляет. В репозитории есть тесты, которые не дают программе лишних умений: писать сообщения, выходить из групп, удалять чужое.</p>
     </div>
   </div>
 </section>
@@ -372,11 +372,11 @@ api_hash (при вводе не виден): <span class="cur" aria-hidden="tru
   </details>
   <details>
     <summary>Программа видит мои личные переписки?</summary>
-    <p>В списке чатов Telegram присылает и личные, но программа их сразу пропускает: не листает и ничего в них не удаляет. Так же с ботами, «Избранным» и служебным чатом Telegram.</p>
+    <p>Telegram присылает список всех чатов, включая личные, и в нём последнее сообщение каждого чата. Программа личные чаты сразу пропускает: не читает их историю, ничего в них не удаляет и ничего о них не сохраняет. Так же с ботами, «Избранным» и служебным чатом Telegram.</p>
   </details>
   <details>
     <summary>А чужие сообщения? Я админ в паре групп.</summary>
-    <p>Только ваши, даже если вы админ. Группы, которые вы создали сами, программа пропускает целиком, чтобы не опустошить свою же группу.</p>
+    <p>Только ваши, даже если вы админ. Группы, которые вы создали сами, программа пропускает целиком, чтобы не опустошить вашу же группу.</p>
   </details>
   <details>
     <summary>Сообщения исчезнут у всех?</summary>
@@ -384,11 +384,15 @@ api_hash (при вводе не виден): <span class="cur" aria-hidden="tru
   </details>
   <details>
     <summary>Сколько это займёт?</summary>
-    <p>Поиск в больших чатах занимает несколько минут. Перед удалением программа сама пишет, сколько примерно минут уйдёт: удаляет она пачками с паузами, реакции снимает по одной.</p>
+    <p>Поиск в больших чатах занимает несколько минут. Перед удалением программа сама пишет, сколько примерно минут уйдёт. Сообщения она удаляет пачками по 100 с паузой 4 секунды, а реакции снимает по одной: тысяча сообщений уйдёт меньше чем за минуту, сто реакций займут минут семь. Если Telegram попросит подождать, выйдет дольше.</p>
+  </details>
+  <details>
+    <summary>Найдёт ли программа мои старые реакции?</summary>
+    <p>Реакции она ищет только в сообщениях за последние 90 дней: чтобы найти свою реакцию, ей приходится просматривать чат сообщение за сообщением, а это долго. Свои сообщения и комментарии она находит за всё время.</p>
   </details>
   <details>
     <summary>Что будет, если закрыть окно посреди удаления?</summary>
-    <p>Удалённое останется удалённым, остальное программа найдёт при следующем запуске. Аккуратнее нажать <kbd>Ctrl</kbd>+<kbd>C</kbd>: она закончит текущий запрос и остановится.</p>
+    <p>Удалённое останется удалённым, остальное программа найдёт при следующем запуске. Лучше нажать <kbd>Ctrl</kbd>+<kbd>C</kbd>: она закончит текущий запрос и остановится.</p>
   </details>
   <details>
     <summary>my.telegram.org пишет ERROR при создании приложения</summary>
@@ -396,7 +400,7 @@ api_hash (при вводе не виден): <span class="cur" aria-hidden="tru
   </details>
   <details>
     <summary>Почему через терминал, а не обычное приложение?</summary>
-    <p>Программа маленькая, и так её проще проверить: она ставится одной командой прямо из открытого кода, без установщика, внутри которого неизвестно что.</p>
+    <p>Программа маленькая, и так её проще проверить: она устанавливается одной командой прямо из открытого кода, без установщика, внутри которого неизвестно что.</p>
   </details>
   <details>
     <summary>Это программа от Telegram?</summary>
@@ -408,7 +412,7 @@ api_hash (при вводе не виден): <span class="cur" aria-hidden="tru
 <footer class="foot wrap">
   <div class="foot-in">
     <p>tgsweep, лицензия MIT. Неофициальная программа, с Telegram не связана.</p>
-    <p>Сайт считает посещения без cookies и без личных данных: только число просмотров и откуда пришли.</p>
+    <p>Сайт считает посещения через GoatCounter без cookies и без личных данных: число просмотров, с какого сайта пришли, браузер, система, страна и ширина экрана.</p>
     <p><a href="https://github.com/umbrella-at/tgsweep">Код на GitHub</a></p>
   </div>
 </footer>

@@ -2,7 +2,7 @@
 
 Удаляет ваши сообщения, комментарии к постам и реакции в группах Telegram, которые вы сами отметите. Работает на вашем компьютере: macOS, Windows или Linux. Сервер и бот не нужны.
 
-Пошаговая инструкция со скриншотами для Windows и Mac: https://tgsweep.atworks.dev
+Пошаговая инструкция для Windows, macOS и Linux: https://tgsweep.atworks.dev
 
 Что tgsweep не делает никогда:
 
@@ -13,7 +13,7 @@
 
 ## Установка
 
-Нужен uv, менеджер Python-программ. Python он поставит сам.
+Нужен uv, менеджер Python-программ. Python он установит сам.
 
 macOS и Linux, в Терминале:
 
@@ -27,7 +27,7 @@ Windows, в PowerShell:
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-Закройте и снова откройте терминал, затем поставьте tgsweep:
+Закройте и снова откройте терминал, затем установите tgsweep:
 
 ```sh
 uv tool install https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip
@@ -43,7 +43,7 @@ uv tool install --reinstall https://github.com/umbrella-at/tgsweep/archive/refs/
 
 ## api_id и api_hash
 
-Программам вне официальных приложений Telegram нужен свой ключ. Он бесплатный:
+Сторонним программам для Telegram нужен свой ключ. Он бесплатный:
 
 1. Откройте https://my.telegram.org и войдите по номеру телефона. Код придёт в Telegram.
 2. Выберите API development tools и создайте приложение. Название и адрес любые, платформа Desktop.
@@ -65,7 +65,7 @@ tgsweep
 6. Удаляется всё отмеченное за один раз, с паузами, чтобы Telegram не ограничил аккаунт. Внизу видно, сколько уже удалено. Если Telegram просит подождать, tgsweep ждёт и пишет об этом. Ctrl+C останавливает после текущего запроса, оставшееся найдётся при следующем запуске.
 7. В конце tgsweep предложит выйти из аккаунта на этом компьютере. Так безопаснее: файл входа открывает весь аккаунт.
 
-Выйти позже: `tgsweep --logout`. Сессию можно завершить и в самом Telegram: Настройки, Устройства, сессия tgsweep.
+Выйти позже: `tgsweep --logout`. Сеанс можно завершить и в самом Telegram: Настройки, Устройства, сеанс tgsweep, «Завершить сеанс».
 
 ## Где лежат файлы
 

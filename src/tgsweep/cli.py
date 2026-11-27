@@ -29,7 +29,7 @@ CREDENTIALS_HELP = """Для работы нужны api_id и api_hash. Их в
 # Telegram refuses these keys: they were mistyped, or the app was deleted on my.telegram.org.
 KEYS_REFUSED = (errors.ApiIdInvalidError, errors.ApiIdPublishedFloodError)
 
-LOGIN_HELP = "Вход в Telegram. tgsweep увидит только группы и каналы, личные чаты он не открывает."
+LOGIN_HELP = "Вход в Telegram. tgsweep работает только с группами и каналами, личные чаты он не открывает."
 
 ClientFactory = Callable[..., TelegramClient]
 
@@ -76,7 +76,7 @@ async def log_out_here(client, home: Home, ui: UI) -> None:
     if done:
         ui.say("Вы вышли из аккаунта на этом компьютере.")
     else:
-        ui.say("Telegram не подтвердил выход. Файл входа на этом компьютере удалён, а сессию tgsweep "
+        ui.say("Telegram не подтвердил выход. Файл входа на этом компьютере удалён, а сеанс tgsweep "
                "завершите в Telegram: Настройки, Устройства.")
 
 
