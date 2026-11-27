@@ -156,12 +156,19 @@ async def qr_login(
     *,
     total_s: float = QR_TOTAL_S,
     clock: Callable[[], float] = time.monotonic,
+    clear: Callable[[], None] | None = None,
 ) -> None:
-    """The client must receive updates: Telethon learns about the scan from UpdateLoginToken."""
+    """The client must receive updates: Telethon learns about the scan from UpdateLoginToken.
+
+    clear takes the shown code off the screen: it runs before each new code, before the password
+    question and on the way out, whatever the way. Without it the codes stay where they were printed.
+    """
+    clear = clear or (lambda: None)
     deadline = clock() + total_s
     try:
         qr = await client.qr_login()
         while True:
+            clear()
             show(qr.url)
             say(qr_hint())
             try:
@@ -174,20 +181,25 @@ async def qr_login(
                 if await client.is_user_authorized():  # the scan landed between the timeout and the new code
                     return
     except errors.SessionPasswordNeededError:
+        clear()
         await password_login(client, ask_secret, say)
+    finally:
+        clear()
 
 
-def render_qr(url: str) -> str:
+def render_qr(url: str, color: bool = True) -> str:
     """The QR code as terminal text, white on black whatever the terminal theme.
 
     segno draws light modules as blocks in the text colour, so on a light theme without explicit
-    colours the code comes out as a negative that cameras may not read.
+    colours the code comes out as a negative that cameras may not read. Without colour (output
+    that is not a terminal) the lines carry no escape codes at all.
     """
     import segno
 
     buf = io.StringIO()
     segno.make(url, error="l").terminal(out=buf, compact=True)
-    return "\n".join(f"\x1b[97;40m{line}\x1b[0m" for line in buf.getvalue().splitlines())
+    lines = buf.getvalue().splitlines()
+    return "\n".join(f"\x1b[97;40m{line}\x1b[0m" if color else line for line in lines)
 
 
 def show_qr(url: str, out: TextIO | None = None) -> None:

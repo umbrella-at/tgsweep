@@ -274,6 +274,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "ru": "QR-код так и не отсканировали. Если вход на телефоне вы подтвердили, запустите вход ещё раз",
         "en": "The QR code was not scanned. If you did confirm the sign-in on your phone, start signing in again",
     },
+    "signed_in": {"ru": "Вход выполнен.", "en": "Signed in."},
     # --- home ---
     "api_id_format": {
         "ru": "api_id это число, например 1234567, возьмите его на my.telegram.org",

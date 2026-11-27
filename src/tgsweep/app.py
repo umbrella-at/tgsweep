@@ -10,9 +10,9 @@ import asyncio
 import math
 import signal
 import threading
-from contextlib import contextmanager
+from contextlib import AbstractContextManager, contextmanager
 from datetime import datetime, timezone
-from typing import Callable, Iterator, Protocol
+from typing import Any, Callable, Iterator, Protocol
 
 from . import cleanup
 from .cleanup import ApplyProgress, ApplyReport, Plan, Policy, ScanProgress, Target
@@ -55,6 +55,9 @@ class UI(Protocol):
     def ask(self, prompt: str) -> str: ...
 
     def ask_secret(self, prompt: str) -> str: ...
+
+    def transient(self) -> AbstractContextManager[Any]:
+        """A block of lines that is erased when it closes or is shown anew: show(text), clear(), colors."""
 
     def progress(self, text: str | None) -> None:
         """A status line that keeps replacing itself while the search or the deletion runs; None removes it."""

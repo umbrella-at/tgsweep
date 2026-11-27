@@ -7,13 +7,16 @@ the synchronous one would start a second loop and fail inside the running one.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import getpass
 import logging
+import math
+import re
 import shutil
 import sys
 import time
 import unicodedata
-from typing import Any, Callable, TextIO
+from typing import Any, Callable, Iterator, TextIO
 
 import questionary
 from prompt_toolkit.key_binding import KeyBindings, merge_key_bindings
@@ -30,6 +33,8 @@ SPINNER = "|/-\\"  # plain ASCII: every console font has it
 REDRAW_S = 0.25
 # The terminal echoes ^C after the line; the next redraw wipes these extra columns too.
 ECHO_ROOM = 2
+# Colour and cursor codes take no room on the screen.
+ESCAPE = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
 
 
 def printable(text: str) -> str:
@@ -56,6 +61,17 @@ def _units(text: str) -> list[str]:
         else:
             units.append(ch)
     return units
+
+
+def line_widths(text: str) -> list[int]:
+    """Screen columns of each line of the text; colour codes take none."""
+    return [columns_of(ESCAPE.sub("", line)) for line in text.split("\n")]
+
+
+def screen_rows(widths: list[int], width: int) -> int:
+    """Rows the lines take on a screen this wide: a long line wraps to as many rows as it needs, an empty one takes one."""
+    width = max(1, width)
+    return sum(max(1, math.ceil(columns / width)) for columns in widths)
 
 
 def fit(text: str, width: int) -> str:
@@ -196,18 +212,66 @@ def with_russian_keys(question: questionary.Question) -> questionary.Question:
     return question
 
 
+class Transient:
+    """Lines that leave the screen when they are no longer needed, like the QR code after the sign-in.
+
+    show() opens a block with its text; everything said after it, library warnings included, joins
+    the block; clear() erases the block and closes it. Only escape codes can erase, so without them
+    (output that is not a terminal, a Windows console without VT) clear() leaves the lines where they are.
+    """
+
+    def __init__(self, ui: TerminalUI) -> None:
+        self.ui = ui
+
+    @property
+    def colors(self) -> bool:
+        return self.ui.ansi
+
+    def show(self, text: str) -> None:
+        self.clear()  # never two blocks on the screen
+        self.ui.block = []
+        self.ui.say(text)
+
+    def clear(self) -> None:
+        widths, self.ui.block = self.ui.block, None
+        if not widths or not self.ui.ansi:
+            return
+        # Counted now, not when printed: a terminal rewraps the lines when its window is resized.
+        rows = screen_rows(widths, self.ui.status.columns())
+        status = self.ui.status
+        status.clear()
+        # Up to the first row of the block (a terminal stops at its top row), then erase to the end.
+        status.out.write(f"\x1b[{rows}F\x1b[J")
+        status.out.flush()
+        status.draw()
+
+
 class TerminalUI:
-    def __init__(self, *, status: StatusLine | None = None, **io: Any) -> None:
-        """io: prompt_toolkit input= and output=, for tests."""
+    def __init__(self, *, status: StatusLine | None = None, ansi: bool = False, **io: Any) -> None:
+        """ansi: escape codes may go to the output, so lines can be coloured and erased.
+        io: prompt_toolkit input= and output=, for tests."""
         self.io = io
         self.status = status or StatusLine()
+        self.ansi = ansi
+        self.block: list[int] | None = None  # line widths of the open transient block, None when there is none
 
     def say(self, text: str) -> None:
         """A line above the status line, which comes back right under it."""
         self.status.clear()
         self.status.out.write(text + "\n")
         self.status.out.flush()
+        if self.block is not None:
+            self.block += line_widths(text)
         self.status.draw()
+
+    @contextlib.contextmanager
+    def transient(self) -> Iterator[Transient]:
+        """A place for lines that must go away: whatever is still shown when it closes is erased."""
+        block = Transient(self)
+        try:
+            yield block
+        finally:
+            block.clear()
 
     def progress(self, text: str | None) -> None:
         self.status.show(text)

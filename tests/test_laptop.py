@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import contextlib
 import json
 import os
 import re
@@ -11,6 +12,7 @@ import stat
 import sys
 from datetime import timedelta
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -49,6 +51,7 @@ class ScriptedUI:
         self.questions: list[str] = []
         self.secret_prompts: list[str] = []
         self.status: list[str | None] = []
+        self.transients: list[int] = []  # how many lines were said when each transient block closed
 
     @property
     def text(self) -> str:
@@ -59,6 +62,14 @@ class ScriptedUI:
 
     def progress(self, text):
         self.status.append(text)
+
+    @contextlib.contextmanager
+    def transient(self):
+        # A transcript keeps every line, as an output without escape codes does.
+        try:
+            yield SimpleNamespace(colors=False, show=self.say, clear=lambda: None)
+        finally:
+            self.transients.append(len(self.lines))
 
     def ask(self, prompt):
         self.questions.append(prompt)
@@ -322,12 +333,32 @@ def creds(monkeypatch):
     monkeypatch.setenv(home_mod.API_HASH_ENV, GOOD_HASH)
 
 
+async def test_qr_sign_in_says_so_once_the_code_is_gone(laptop, creds, monkeypatch):
+    client, w = world()
+    client.authorized = False
+    passed = []
+
+    async def fake_qr(c, ask_secret, say, show, clear=None):
+        passed.append(clear)
+        show("tg://login?token=abc")
+        c.authorized = True
+        laptop.session_file.write_bytes(b"session")
+
+    monkeypatch.setattr(cli.signin, "qr_login", fake_qr)
+    ui = ScriptedUI(retention=0, pick=lambda rows: [])
+    assert await cli.run(args(), laptop, ui, client_factory=factory_for(client, [])) == 0
+    assert callable(passed[0])
+    closed = ui.transients[0]
+    assert "█" in ui.lines[closed - 1] and "\x1b" not in ui.lines[closed - 1]  # the code, without colour here
+    assert ui.lines[closed] == "Вход выполнен."
+
+
 async def test_first_run_signs_in_by_qr_with_updates_then_signs_out(laptop, creds, monkeypatch):
     client, w = world()
     client.authorized = False
     scanned = []
 
-    async def fake_qr(c, ask_secret, say, show):
+    async def fake_qr(c, ask_secret, say, show, clear=None):
         scanned.append(c)
         c.authorized = True
         laptop.session_file.write_bytes(b"session")
@@ -801,7 +832,7 @@ async def test_rejected_api_keys_are_forgotten(laptop, monkeypatch):
     client, _ = world()
     client.authorized = False
 
-    async def rejected(c, ask_secret, say, show):
+    async def rejected(c, ask_secret, say, show, clear=None):
         raise errors.ApiIdInvalidError(request=None)
 
     monkeypatch.setattr(cli.signin, "qr_login", rejected)

@@ -206,6 +206,8 @@ def test_no_dashes_in_human_texts():
 INSTALL_COMMANDS = {
     'powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"',
     "curl -LsSf https://astral.sh/uv/install.sh | sh",
+    "source $HOME/.local/bin/env",
+    '$env:Path = "$HOME\\.local\\bin;$env:Path"',
     "uv tool install https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip",
     # uv tool upgrade does not fetch the archive again (it answers "Nothing to upgrade"), so updates reinstall.
     "uv tool install --reinstall https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip",
@@ -329,6 +331,47 @@ class Shape(HTMLParser):
             self.counts[name] += name in classes
         self.counts["details"] += tag == "details"
         self.counts["figure.shot"] += tag == "figure" and "shot" in classes
+
+
+class CommandSystems(HTMLParser):
+    """The systems each command is shown for: the data-os of the nearest block around it."""
+
+    VOID = {"area", "br", "hr", "img", "input", "link", "meta", "source", "wbr"}
+
+    def __init__(self, text: str):
+        super().__init__()
+        self.stack: list[str | None] = []
+        self.code: str | None = None
+        self.systems: dict[str, str | None] = {}
+        self.feed(text)
+
+    def handle_starttag(self, tag, attrs):
+        a = dict(attrs)
+        if tag == "code" and not a.get("class"):
+            self.code = ""
+        if tag not in self.VOID:
+            self.stack.append(a.get("data-os"))
+
+    def handle_endtag(self, tag):
+        if tag == "code" and self.code is not None:
+            self.systems[self.code] = next((os for os in reversed(self.stack) if os), None)
+            self.code = None
+        if tag not in self.VOID:
+            self.stack.pop()
+
+    def handle_data(self, data):
+        if self.code is not None:
+            self.code += data
+
+
+@pytest.mark.parametrize("lang", PAGES)
+def test_each_system_gets_its_own_commands(lang):
+    systems = CommandSystems(page(lang)).systems
+    assert systems["source $HOME/.local/bin/env"] == "mac linux"
+    assert systems['$env:Path = "$HOME\\.local\\bin;$env:Path"'] == "win"
+    assert systems["curl -LsSf https://astral.sh/uv/install.sh | sh"] == "mac linux"
+    assert systems['powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"'] == "win"
+    assert systems["uv tool install https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip"] is None
 
 
 def test_pages_have_the_same_shape():

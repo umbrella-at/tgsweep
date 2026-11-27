@@ -114,7 +114,7 @@ async def run(args: argparse.Namespace, home: Home, ui: UI, *, client_factory: C
                 phone = ui.ask(t("phone_prompt")).strip()
                 await signin.code_login(client, phone, ask=ui.ask, ask_secret=ui.ask_secret, say=ui.say)
             else:
-                await signin.qr_login(client, ask_secret=ui.ask_secret, say=ui.say, show=signin.show_qr)
+                await qr_sign_in(client, ui)
     except KEYS_REFUSED:
         home.credentials_file.unlink(missing_ok=True)
         raise ConfigError(t("keys_refused")) from None
@@ -144,17 +144,42 @@ async def run(args: argparse.Namespace, home: Home, ui: UI, *, client_factory: C
         home.secure_session()
 
 
-def enable_ansi() -> None:
-    """The QR code is drawn with ANSI colours; the old Windows console shows them only when asked to."""
+async def qr_sign_in(client, ui: UI) -> None:
+    """Sign in by QR code. The code is erased once it is no longer needed: one code on the screen at a time."""
+    with ui.transient() as block:
+        await signin.qr_login(
+            client,
+            ask_secret=ui.ask_secret,
+            say=ui.say,
+            show=lambda url: block.show("\n" + signin.render_qr(url, color=block.colors)),
+            clear=block.clear,
+        )
+    ui.say(t("signed_in"))
+
+
+def enable_ansi() -> bool:
+    """Whether escape codes work: the QR code is drawn with ANSI colours and erased with cursor codes.
+
+    Elsewhere they always do; the old Windows console understands them only when asked to.
+    """
     if sys.platform != "win32":
-        return
+        return True
     import ctypes
 
     kernel32 = ctypes.windll.kernel32
     handle = kernel32.GetStdHandle(-11)
     mode = ctypes.c_uint32()
-    if kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
-        kernel32.SetConsoleMode(handle, mode.value | 0x0004)  # ENABLE_VIRTUAL_TERMINAL_PROCESSING
+    if not kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+        return False
+    return bool(kernel32.SetConsoleMode(handle, mode.value | 0x0004))  # ENABLE_VIRTUAL_TERMINAL_PROCESSING
+
+
+def terminal_ui():
+    """The UI of the command: escape codes only for a terminal that understands them."""
+    from .ui import TerminalUI
+
+    isatty = getattr(sys.stdout, "isatty", None)
+    return TerminalUI(ansi=enable_ansi() and bool(isatty and isatty()))
 
 
 def quiet_library_logs(ui) -> None:
@@ -223,10 +248,7 @@ def main(argv: list[str] | None = None) -> int:
     if not sys.stdin.isatty():
         print(t("needs_terminal"), file=sys.stderr)
         return 2
-    enable_ansi()
-    from .ui import TerminalUI
-
-    ui = TerminalUI()
+    ui = terminal_ui()
     quiet_library_logs(ui)
     try:
         return asyncio.run(run(args, home, ui))

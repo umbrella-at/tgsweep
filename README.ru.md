@@ -29,7 +29,17 @@ Windows, в PowerShell:
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-Закройте и снова откройте терминал, затем установите tgsweep:
+Затем подключите uv в текущем окне (или просто откройте новый терминал):
+
+```sh
+source $HOME/.local/bin/env
+```
+
+```powershell
+$env:Path = "$HOME\.local\bin;$env:Path"
+```
+
+Теперь установите tgsweep:
 
 ```sh
 uv tool install https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.zip
