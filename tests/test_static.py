@@ -683,3 +683,14 @@ def test_the_language_script_remembers_without_cookies():
     assert "document.cookie" not in script
     assert "location.replace(" in script and "location.assign" not in script and "location.href =" not in script
     assert CYRILLIC.findall(script) == []
+
+
+def test_the_language_script_keeps_the_source_of_the_visit():
+    # After location.replace the referrer is this site, so the real one goes to GoatCounter as ?ref=<host>,
+    # unless the address already has a source parameter. These four are the ones GoatCounter reads
+    # (https://www.goatcounter.com/help/campaigns).
+    script = LANG_SCRIPT.read_text(encoding="utf-8")
+    assert 'const SOURCES = ["utm_source", "ref", "src", "source"];' in script
+    assert "SOURCES.some((name) => params.has(name))" in script
+    assert '"ref=" + encodeURIComponent(from.hostname)' in script
+    assert "location.replace(PAGES[wanted] + query(from) + location.hash);" in script

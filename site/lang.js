@@ -3,6 +3,8 @@
 // Sends a visitor to the page in their language before anything is drawn: / is Russian, /en/ English.
 // Loaded in <head> of both pages without defer, ahead of the stylesheet. A choice made with the
 // language link in the header is remembered in localStorage (tgsweep-lang); there are no cookies.
+// After the switch the browser names this site as the referrer, so the real source of the visit
+// travels to GoatCounter as ?ref=<host>, the way its campaigns read it.
 (function () {
   const KEY = "tgsweep-lang";
   const PAGES = { ru: "/", en: "/en/" };
@@ -10,6 +12,8 @@
   // No "telegram" here: the Telegram in-app browser on Android says Telegram-Android, and it is a
   // person reading. Telegram's link preview says TelegramBot, which "bot" already covers.
   const ROBOTS = /bot|crawl|spider|slurp|facebookexternalhit/i;
+  // The query parameters GoatCounter takes the source from; one already in the address wins.
+  const SOURCES = ["utm_source", "ref", "src", "source"];
 
   function saved() {
     try {
@@ -33,8 +37,17 @@
     return "en";
   }
 
-  function fromThisSite() {
-    try { return document.referrer !== "" && new URL(document.referrer).origin === location.origin; } catch (e) { return false; }
+  function referrer() {
+    try { return document.referrer ? new URL(document.referrer) : null; } catch (e) { return null; }
+  }
+
+  // The same query and hash, plus ref=<host> of an outside referrer unless the address names a source.
+  // Only the host: a shorter address, and nothing more about the visitor than where they came from.
+  function query(from) {
+    const search = location.search;
+    const params = new URLSearchParams(search);
+    if (!from || !from.hostname || SOURCES.some((name) => params.has(name))) return search;
+    return search + (search ? "&" : "?") + "ref=" + encodeURIComponent(from.hostname);
   }
 
   // The body does not exist yet, so the listener goes on the document.
@@ -45,7 +58,9 @@
 
   const here = document.documentElement.lang;
   const wanted = saved() || preferred();
-  if (!known(here) || wanted === here || fromThisSite() || ROBOTS.test(navigator.userAgent || "")) return;
+  const from = referrer();
+  const fromThisSite = from !== null && from.origin === location.origin;
+  if (!known(here) || wanted === here || fromThisSite || ROBOTS.test(navigator.userAgent || "")) return;
   // replace, not assign: Back must not lead to the page the visitor was sent away from.
-  location.replace(PAGES[wanted] + location.search + location.hash);
+  location.replace(PAGES[wanted] + query(from) + location.hash);
 })();
