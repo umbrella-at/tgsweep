@@ -6,6 +6,9 @@ import ast
 import html
 import json
 import re
+import shutil
+import subprocess
+import zipfile
 from collections import Counter
 from html.parser import HTMLParser
 from pathlib import Path
@@ -206,6 +209,21 @@ def test_no_dashes_in_human_texts():
         assert "—" not in text and "–" not in text, path
 
 
+def test_install_archive_leaves_the_recordings_out(tmp_path):
+    """main.zip, the archive tgsweep is installed from, is made by git archive: the GIFs stay out of it."""
+    if shutil.which("git") is None or not (REPO / ".git").exists():
+        pytest.skip("not a git checkout")
+    archive = tmp_path / "main.zip"
+    # Attributes of the working tree too, so the check holds before the commit; CI checks out the commit itself.
+    subprocess.run(["git", "archive", "--format=zip", "--worktree-attributes", "-o", str(archive), "HEAD"],
+                   cwd=REPO, check=True)
+    with zipfile.ZipFile(archive) as z:
+        names = set(z.namelist())
+    assert not [name for name in names if name.startswith("docs/media")]
+    assert {"README.md", "pyproject.toml", "LICENSE", "src/tgsweep/__init__.py"} <= names
+    assert (REPO / "docs/media/demo-en.gif").is_file()  # the recordings are still in the repository
+
+
 # What a newcomer pastes. The site and the README must give the same commands.
 INSTALL_COMMANDS = {
     'powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"',
@@ -264,7 +282,7 @@ def test_caddy_site_matches_the_page():
 MOCKUP = {
     "ru": {
         "name": "Мария (@maria_demo)",
-        "scanned": "Английский клуб",
+        "scanned": "Испанский клуб",
         "chats": ["Соседи по дому", "Книжный клуб", "Бег по утрам", "Объявления района"],
     },
     "en": {

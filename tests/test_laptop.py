@@ -353,6 +353,46 @@ async def test_qr_sign_in_says_so_once_the_code_is_gone(laptop, creds, monkeypat
     assert ui.lines[closed] == "Вход выполнен."
 
 
+class CodeClient(FakeClient):
+    """Telegram that sends a code by app and, when asked to, wants the cloud password after it."""
+
+    def __init__(self, password_needed: bool):
+        super().__init__()
+        self.authorized = False
+        self.password_needed = password_needed
+        self.api_id, self.api_hash = 4242, GOOD_HASH
+        self.sign_ins: list[dict] = []
+
+    async def __call__(self, request):
+        from telethon.tl import functions, types
+
+        if isinstance(request, functions.auth.SendCodeRequest):
+            return types.auth.SentCode(type=types.auth.SentCodeTypeApp(length=5), phone_code_hash="hash")
+        return await super().__call__(request)
+
+    async def sign_in(self, phone=None, code=None, *, password=None, phone_code_hash=None):
+        from telethon import errors
+
+        self.sign_ins.append({"code": code, "password": password})
+        if code is not None and self.password_needed:
+            raise errors.SessionPasswordNeededError(request=None)
+        self.authorized = True
+
+
+@pytest.mark.parametrize("password_needed", [False, True], ids=["code", "code and cloud password"])
+async def test_code_sign_in_says_so_too(laptop, creds, password_needed):
+    client = CodeClient(password_needed)
+    chat = client.add_channel(100, "Chat with friends")
+    client.add_message(chat, ME, "today", date=FRESH)
+    ui = ScriptedUI(retention=0, pick=lambda rows: [], asks=["+10000000000", "12345"], secrets=["pw"])
+    assert await cli.run(args(code=True), laptop, ui, client_factory=factory_for(client, [])) == 0
+    assert client.sign_ins[-1] == ({"code": None, "password": "pw"} if password_needed else {"code": "12345", "password": None})
+    assert ui.secret_prompts == (["Облачный пароль: "] if password_needed else [])
+    assert ui.lines.count("Вход выполнен.") == 1
+    signed = ui.lines.index("Вход выполнен.")
+    assert ui.lines[signed + 1] == "Аккаунт: Me (@me_user)"  # right after the sign-in, before the run
+
+
 async def test_first_run_signs_in_by_qr_with_updates_then_signs_out(laptop, creds, monkeypatch):
     client, w = world()
     client.authorized = False

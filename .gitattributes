@@ -1,0 +1,3 @@
+# The archive tgsweep is installed from (main.zip) leaves the README recordings out.
+# GitHub still shows them in the README: export-ignore acts only on archives.
+docs/media export-ignore

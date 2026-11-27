@@ -30,7 +30,7 @@ uv tool install https://github.com/umbrella-at/tgsweep/archive/refs/heads/main.z
 
 ## Записи работы программы в README
 
-- В начале `README.md` и `README.ru.md` стоят записи терминала: `docs/media/demo-en.gif` и `docs/media/demo-ru.gif`. Сценарии VHS (charmbracelet/vhs) лежат рядом: `docs/media/demo-en.tape` и `docs/media/demo-ru.tape`.
+- В начале `README.md` и `README.ru.md` стоят записи терминала: `docs/media/demo-en.gif` и `docs/media/demo-ru.gif`. Сценарии VHS (charmbracelet/vhs) лежат рядом: `docs/media/demo-en.tape` и `docs/media/demo-ru.tape`. В архив main.zip, из которого ставится программа, папка `docs/media` не попадает: `.gitattributes` помечает её `export-ignore`. На GitHub README показывает записи как раньше, это правило действует только на архивы.
 - Записывается настоящая программа (`cli.run`, `sweep`, вопросы в терминале) на выдуманном аккаунте. `scripts/demo.py en` или `ru` собирает мир Марии на `FakeClient` из `tests/fake.py` (те же чаты и числа, что на сайте), берёт временную папку программы и выдуманные api_id и api_hash. Сети нет: фабрика клиентов отдаёт только `FakeClient`. Паузы сокращены в самом скрипте: ответы `FakeClient` идут с небольшими задержками, паузы между запросами удаления в 10 раз короче настоящих. Код программы ради записи не меняется.
 - Пересобирать, когда меняются тексты или ход программы (вопросы, строки поиска и итога) или числа демо-мира. `tests/test_demo.py` прогоняет мир через программу и сверяет числа записи: если он падает, записи устарели.
 - Нужны vhs (`brew install vhs`, он ставит ttyd и ffmpeg) и шрифт JetBrains Mono (`brew install --cask font-jetbrains-mono`); проверено на vhs 0.12.1. Из корня репозитория:

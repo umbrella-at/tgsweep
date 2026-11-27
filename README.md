@@ -35,9 +35,13 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 
 Then make uv available in the current window (or just open a new terminal):
 
+macOS and Linux:
+
 ```sh
 source $HOME/.local/bin/env
 ```
+
+Windows, in PowerShell:
 
 ```powershell
 $env:Path = "$HOME\.local\bin;$env:Path"

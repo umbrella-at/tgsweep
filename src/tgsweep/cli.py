@@ -113,6 +113,7 @@ async def run(args: argparse.Namespace, home: Home, ui: UI, *, client_factory: C
             if args.code:
                 phone = ui.ask(t("phone_prompt")).strip()
                 await signin.code_login(client, phone, ask=ui.ask, ask_secret=ui.ask_secret, say=ui.say)
+                ui.say(t("signed_in"))
             else:
                 await qr_sign_in(client, ui)
     except KEYS_REFUSED:
