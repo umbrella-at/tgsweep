@@ -686,11 +686,21 @@ def test_the_language_script_remembers_without_cookies():
 
 
 def test_the_language_script_keeps_the_source_of_the_visit():
-    # After location.replace the referrer is this site, so the real one goes to GoatCounter as ?ref=<host>,
-    # unless the address already has a source parameter. These four are the ones GoatCounter reads
-    # (https://www.goatcounter.com/help/campaigns).
+    # After location.replace the referrer is this site. The real one, whole, goes to the new page in
+    # sessionStorage and from there to GoatCounter's referrer setting; the address stays as it came,
+    # so a link copied after the switch carries no source of its own.
     script = LANG_SCRIPT.read_text(encoding="utf-8")
-    assert 'const SOURCES = ["utm_source", "ref", "src", "source"];' in script
-    assert "SOURCES.some((name) => params.has(name))" in script
-    assert '"ref=" + encodeURIComponent(from.hostname)' in script
-    assert "location.replace(PAGES[wanted] + query(from) + location.hash);" in script
+    assert "ref=" not in script and "hostname" not in script
+    assert "location.replace(PAGES[wanted] + location.search + location.hash);" in script
+    assert 'const REF_KEY = "tgsweep-ref";' in script
+    assert "sessionStorage.setItem(REF_KEY, value);" in script
+    assert "keepReferrer(document.referrer);" in script
+    assert script.index("keepReferrer(document.referrer);") < script.index("location.replace(")
+    # Read once, then gone: a reload must not count the old source again.
+    read = script.index("const value = sessionStorage.getItem(REF_KEY);")
+    assert read < script.index("sessionStorage.removeItem(REF_KEY);") < script.index("return value;", read)
+    assert "window.goatcounter = Object.assign(window.goatcounter || {}, { referrer: kept });" in script
+    # GoatCounter reads its settings when count.js loads: the language script must come first.
+    for lang in PAGES:
+        text = page(lang)
+        assert text.index('<script src="/lang.js">') < text.index("data-goatcounter="), lang
