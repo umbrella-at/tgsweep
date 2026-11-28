@@ -187,6 +187,11 @@ TEXTS: dict[str, dict[str, str]] = {
         "ru": "язык программы: ru, en или auto (по языку системы). Выбор запоминается",
         "en": "program language: ru, en or auto (system language). The choice is remembered",
     },
+    # argparse's own words; the English ones are argparse's, word for word.
+    "help_usage": {"ru": "использование: ", "en": "usage: "},
+    "help_options": {"ru": "параметры", "en": "options"},
+    "help_help": {"ru": "показать эту справку и выйти", "en": "show this help message and exit"},
+    "help_version": {"ru": "показать версию программы и выйти", "en": "show program's version number and exit"},
     "needs_terminal": {
         "ru": "tgsweep работает только в интерактивном терминале.",
         "en": "tgsweep only works in an interactive terminal.",

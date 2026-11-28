@@ -2,6 +2,12 @@
 
 All notable changes to tgsweep are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- `tgsweep --lang ru --help` is in Russian throughout: the usage line, the heading of the options and the help of `-h` and `--version` came out in English before. The English help is unchanged.
+
 ## [0.3.1] - 2026-11-28
 
 ### Added

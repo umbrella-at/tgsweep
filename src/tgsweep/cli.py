@@ -202,12 +202,25 @@ def lang_parser() -> argparse.ArgumentParser:
     return p
 
 
+class HelpFormatter(argparse.HelpFormatter):
+    """The usage line starts with the program's word for it, not argparse's English one."""
+
+    def add_usage(self, usage, actions, groups, prefix=None):
+        super().add_usage(usage, actions, groups, t("help_usage") if prefix is None else prefix)
+
+
 def parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="tgsweep", description=t("help_description"))
-    p.add_argument("--code", action="store_true", help=t("help_code"))
-    p.add_argument("--logout", action="store_true", help=t("help_logout"))
-    p.add_argument("--lang", choices=i18n.LANG_CHOICES, help=t("help_lang"))
-    p.add_argument("--version", action="version", version=f"tgsweep {__version__}")
+    # argparse's own -h and its "options" heading are English: both come from the program's texts instead.
+    # The built-in group stays empty, and argparse leaves an empty group out of the help.
+    p = argparse.ArgumentParser(
+        prog="tgsweep", description=t("help_description"), add_help=False, formatter_class=HelpFormatter
+    )
+    options = p.add_argument_group(t("help_options"))
+    options.add_argument("-h", "--help", action="help", help=t("help_help"))
+    options.add_argument("--code", action="store_true", help=t("help_code"))
+    options.add_argument("--logout", action="store_true", help=t("help_logout"))
+    options.add_argument("--lang", choices=i18n.LANG_CHOICES, help=t("help_lang"))
+    options.add_argument("--version", action="version", version=f"tgsweep {__version__}", help=t("help_version"))
     return p
 
 

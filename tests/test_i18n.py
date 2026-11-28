@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import ast
 import json
+import os
 import re
+import shutil
 import string
 import subprocess
 import sys
+import sysconfig
 from pathlib import Path
 
 import pytest
@@ -258,7 +261,8 @@ def test_a_flag_without_value_is_refused_with_the_full_usage(capsys):
     with pytest.raises(SystemExit) as exc:
         cli.main(["--lang"])
     assert exc.value.code == 2
-    assert capsys.readouterr().err.startswith("usage: tgsweep [-h] [--code] [--logout]")
+    # Tests speak Russian (conftest), and the usage line is the program's, in its language.
+    assert capsys.readouterr().err.startswith("использование: tgsweep [-h] [--code] [--logout]")
 
 
 def command_help(monkeypatch, capsys, lang: str) -> str:
@@ -278,6 +282,37 @@ def test_help_in_english(monkeypatch, capsys):
 def test_help_in_russian(monkeypatch, capsys):
     text = command_help(monkeypatch, capsys, "ru")
     assert "язык программы" in text and "Удаляет ваши сообщения" in text
+
+
+# argparse's own words in its help, as argparse prints them.
+ARGPARSE_WORDS = ["usage:", "options:", "show this help message and exit", "show program's version number and exit"]
+
+
+def installed_help(tmp_path, lang: str) -> str:
+    """The output of `tgsweep --lang <lang> --help`: the installed command, as a user runs it."""
+    command = shutil.which("tgsweep", path=sysconfig.get_path("scripts"))
+    assert command, "no tgsweep command in this environment"
+    env = {k: v for k, v in os.environ.items() if k not in {"TGSWEEP_LANG", "FORCE_COLOR", "PYTHON_COLORS"}}
+    # Wide enough for every help line to stay whole, no colour codes inside the words, UTF-8 in the pipe.
+    env.update(TGSWEEP_HOME=str(tmp_path / "home"), COLUMNS="200", NO_COLOR="1", PYTHONIOENCODING="utf-8")
+    done = subprocess.run([command, "--lang", lang, "--help"], capture_output=True, encoding="utf-8", env=env,
+                          timeout=60)
+    assert done.returncode == 0, done.stderr
+    return done.stdout
+
+
+def test_the_russian_help_has_no_english_argparse_words(tmp_path):
+    text = installed_help(tmp_path, "ru")
+    assert [word for word in ARGPARSE_WORDS if word in text] == []
+    for word in ["использование: tgsweep", "параметры:", "показать эту справку и выйти",
+                 "показать версию программы и выйти"]:
+        assert word in text, word
+
+
+def test_the_english_help_keeps_the_argparse_words(tmp_path):
+    text = installed_help(tmp_path, "en")
+    assert [word for word in ARGPARSE_WORDS if word not in text] == []
+    assert text.startswith("usage: tgsweep ")
 
 
 # --- the whole run in English -----------------------------------------------------
