@@ -16,7 +16,7 @@ from telethon.errors import RPCError
 from . import __version__, i18n, signin
 from .app import UI, Stopper, sweep
 from .errors import ConfigError
-from .home import Home, default_root, load_credentials, parse_credentials, save_credentials
+from .home import Home, default_root, load_credentials, parse_credentials, save_credentials, shown_path
 from .i18n import t
 from .net import SESSION_LOST_ERRORS
 
@@ -137,7 +137,7 @@ async def run(args: argparse.Namespace, home: Home, ui: UI, *, client_factory: C
         if await ui.yes_no(t("ask_sign_out"), default=True):
             await log_out_here(client, home, ui)
         else:
-            ui.say(t("login_kept", root=home.root))
+            ui.say(t("login_kept", root=shown_path(home.root)))
         return code
     finally:
         if client.is_connected():
@@ -177,11 +177,11 @@ def enable_ansi() -> bool:
 
 def terminal_ui(home: Home | None = None):
     """The UI of the command: escape codes only for a terminal that understands them. A line never
-    breaks inside the program's folder or a path in it."""
+    breaks inside the program's folder or a path in it, written as the program prints it."""
     from .ui import TerminalUI
 
     isatty = getattr(sys.stdout, "isatty", None)
-    whole = (str(home.root),) if home else ()
+    whole = (shown_path(home.root),) if home else ()
     return TerminalUI(ansi=enable_ansi() and bool(isatty and isatty()), whole=whole)
 
 
@@ -225,7 +225,9 @@ def remember_lang(home: Home, choice: str | None, saved: str | None) -> str | No
 
 
 def file_error(exc: OSError) -> str:
-    return t("file_error", filename=exc.filename or "", reason=exc.strerror or exc)
+    name = exc.filename
+    return t("file_error", filename=shown_path(name) if isinstance(name, (str, os.PathLike)) else name or "",
+             reason=exc.strerror or exc)
 
 
 def main(argv: list[str] | None = None) -> int:

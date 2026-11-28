@@ -316,6 +316,7 @@ def test_site_mockups_match_program(lang):
     # appear in several mockups, so every place that starts like it must go on exactly like it.
     from tgsweep import app, cli, i18n, signin, ui
     from tgsweep.cleanup import ApplyProgress, ScanProgress
+    from tgsweep.home import shown_path
 
     i18n.set_lang(lang)
     text = visible_text(page(lang))
@@ -334,9 +335,12 @@ def test_site_mockups_match_program(lang):
         app.apply_line(ApplyProgress(done=37, total=53, chat=demo["chats"][0])),
         app.scan_line(ScanProgress(phase="messages", chat=9, chats=21, found=60, title=demo["scanned"])),
         i18n.t("account", name=demo["name"]),
+        # Maria's journal on macOS, printed from inside her home folder as the program prints it.
+        i18n.t("report_journal", path=shown_path("/Users/maria/Library/Application Support/tgsweep/logs/actions.jsonl",
+                                                 home="/Users/maria", windows=False)),
     ]
     counted += [f"{title}: {app.counts(m, 0, r)}" for title, (m, r) in zip(demo["chats"], [(37, 0), (12, 4), (8, 0), (3, 2)])]
-    assert len(counted) == 11
+    assert len(counted) == 12
     lines += counted
     missing = [line for line in lines if line not in text]
     assert missing == []
@@ -704,3 +708,22 @@ def test_the_language_script_keeps_the_source_of_the_visit():
     for lang in PAGES:
         text = page(lang)
         assert text.index('<script src="/lang.js">') < text.index("data-goatcounter="), lang
+
+
+SIMILAR = {"README.md": "## Similar tools", "README.ru.md": "## Похожие программы"}
+SIMILAR_LINKS = [
+    "https://github.com/gurland/telegram-delete-all-messages",
+    "https://github.com/en9inerd/tgeraser",
+    "https://github.com/rusq/wipemychat",
+]
+
+
+@pytest.mark.parametrize("readme", READMES, ids=lambda p: p.name)
+def test_the_readme_names_similar_tools(readme):
+    # Right before the license, with the three tools people find first.
+    text = readme.read_text(encoding="utf-8")
+    sections = re.findall(r"^## .+$", text, re.M)
+    heading = SIMILAR[readme.name]
+    assert sections[-2:] == [heading, {"README.md": "## License", "README.ru.md": "## Лицензия"}[readme.name]]
+    body = text[text.index(heading):text.index(sections[-1])]
+    assert re.findall(r"\]\((https://[^)]+)\)", body) == SIMILAR_LINKS

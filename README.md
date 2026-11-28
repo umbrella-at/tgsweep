@@ -121,6 +121,10 @@ uv tool uninstall tgsweep
 
 Then delete the folder from the table above.
 
+## Similar tools
+
+tgsweep is not the first tool for this. If it doesn't suit you, try [telegram-delete-all-messages](https://github.com/gurland/telegram-delete-all-messages), [TgEraser](https://github.com/en9inerd/tgeraser) or [wipemychat](https://github.com/rusq/wipemychat). What tgsweep does its own way: it searches all your groups at once and shows how many of your messages each one holds before you pick; it also finds your comments under channel posts and removes your reactions to messages from the last 90 days; it never opens private chats and skips groups you created; it asks you to type a number before deleting and keeps a log without message texts; it installs with one uv command, Python included, and signs in with a QR code.
+
 ## License
 
 MIT

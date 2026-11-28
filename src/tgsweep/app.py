@@ -16,7 +16,7 @@ from typing import Any, Callable, Iterator, Protocol
 
 from . import cleanup
 from .cleanup import ApplyProgress, ApplyReport, Plan, Policy, ScanProgress, Target
-from .home import Home
+from .home import Home, shown_path
 from .i18n import plural, t
 from .journal import Journal
 from .net import Sleep
@@ -276,7 +276,7 @@ def _say_report(ui: UI, report: ApplyReport, home: Home) -> None:
         lines.append(t("report_failed", failed=failed))
     if report.stopped:
         lines.append(t("report_stopped"))
-    lines.append(t("report_journal", path=home.journal_file))
+    lines.append(t("report_journal", path=shown_path(home.journal_file)))
     ui.say("\n".join(lines))
 
 

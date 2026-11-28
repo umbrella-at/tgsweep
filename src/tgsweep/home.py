@@ -6,7 +6,7 @@ import json
 import os
 import re
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Mapping
 
 from . import i18n
@@ -28,6 +28,27 @@ def default_root(env: Mapping[str, str] = os.environ) -> Path:
     import platformdirs
 
     return Path(platformdirs.user_data_dir(APP, appauthor=False))
+
+
+def shown_path(path: str | os.PathLike[str], *, home: str | os.PathLike[str] | None = None,
+               windows: bool = os.name == "nt") -> str:
+    """A path as the program prints it. On macOS and Linux a path inside the user's home folder starts
+    with ~: shorter, and a screenshot of the terminal shows no user name. Paths outside the home folder
+    (TGSWEEP_HOME set elsewhere) and every path on Windows are printed whole."""
+    text = os.fspath(path)
+    if windows:
+        return text
+    try:
+        base = PurePosixPath(Path.home() if home is None else home)
+    except (RuntimeError, KeyError):  # no home folder known at all
+        return text
+    if not base.is_absolute() or base == PurePosixPath("/"):  # HOME=/ would turn every path into ~
+        return text
+    try:
+        rest = PurePosixPath(text).relative_to(base)  # by path parts: /Users/maria2 is not inside /Users/maria
+    except ValueError:
+        return text
+    return "~" if rest == PurePosixPath() else f"~/{rest.as_posix()}"
 
 
 @dataclass(frozen=True)
@@ -128,9 +149,9 @@ def load_credentials(home: Home, env: Mapping[str, str] = os.environ) -> tuple[i
     except FileNotFoundError:
         return None
     except (OSError, ValueError):
-        raise ConfigError(t("file_damaged", path=home.credentials_file)) from None
+        raise ConfigError(t("file_damaged", path=shown_path(home.credentials_file))) from None
     if not isinstance(data, dict):
-        raise ConfigError(t("file_damaged", path=home.credentials_file))
+        raise ConfigError(t("file_damaged", path=shown_path(home.credentials_file)))
     return parse_credentials(str(data.get("api_id", "")), str(data.get("api_hash", "")))
 
 

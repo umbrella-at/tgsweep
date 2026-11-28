@@ -1,6 +1,6 @@
 [project]
 name = "tgsweep"
-version = "0.3.0"
+version = "0.3.1"
 description = "Delete your own messages, comments and reactions in the Telegram groups you select"
 readme = "README.md"
 license = "MIT"

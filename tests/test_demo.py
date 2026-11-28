@@ -7,14 +7,16 @@ from __future__ import annotations
 
 import ast
 import importlib.util
+import os
 import re
+import sys
 from pathlib import Path
 
 import pytest
 
 from fake import NOW, FakeClient
 from test_laptop import ScriptedUI, run_sweep
-from tgsweep.home import Home
+from tgsweep.home import Home, shown_path
 from tgsweep.i18n import set_lang
 
 REPO = Path(__file__).resolve().parent.parent
@@ -113,3 +115,16 @@ def test_the_readme_recording_is_there_and_small(readme):
     path = REPO / gifs[0].removeprefix(raw)
     assert path.is_file(), path
     assert path.stat().st_size <= MAX_GIF, (path.name, path.stat().st_size)
+
+
+@pytest.mark.skipif(os.name == "nt", reason="on Windows the demo keeps TGSWEEP_HOME: AppData does not follow HOME")
+def test_the_demo_folder_is_found_as_on_a_real_computer(monkeypatch, tmp_path):
+    # The temporary folder stands in for HOME, so the end of the recording shows ~/..., not /tmp/....
+    for name in ("HOME", "TGSWEEP_HOME", "XDG_DATA_HOME"):
+        monkeypatch.setenv(name, str(tmp_path / "before"))  # put back after the test
+    home = load_demo().home_in(str(tmp_path))
+    assert "TGSWEEP_HOME" not in os.environ and "XDG_DATA_HOME" not in os.environ
+    assert home.root.is_relative_to(tmp_path)
+    expected = {"darwin": "~/Library/Application Support/tgsweep/logs/actions.jsonl",
+                "linux": "~/.local/share/tgsweep/logs/actions.jsonl"}
+    assert shown_path(home.journal_file) == expected[sys.platform]

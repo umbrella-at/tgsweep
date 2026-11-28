@@ -9,8 +9,9 @@ client factory hands out that stand-in and nothing else, so the run never reache
 
 The pauses are shortened: each request to the stand-in takes a moment, so the search runs a few
 seconds with its status line, and the pauses between delete requests are a tenth of the real ones.
-The sign-in is already done, so there is no QR code. Everything is kept in a temporary folder that
-goes away at the end.
+The sign-in is already done, so there is no QR code. A temporary folder stands in for the home
+folder, so the program finds its own folder there as on a real computer and prints it with ~
+(~/Library/Application Support/tgsweep on macOS). It goes away at the end.
 """
 
 from __future__ import annotations
@@ -160,16 +161,26 @@ async def paced_sweep(client, ui, home, **kwargs):
     return await app.sweep(client, ui, home, sleep=short_sleep, **kwargs)
 
 
+def home_in(folder: str) -> Home:
+    """The program's folder inside a stand-in home folder, found the way the program finds it."""
+    if os.name == "nt":
+        os.environ[HOME_ENV] = folder  # Windows keeps the folder in AppData, which HOME does not move
+    else:
+        os.environ.pop(HOME_ENV, None)
+        os.environ.pop("XDG_DATA_HOME", None)  # Linux: ~/.local/share/tgsweep, as with no such setting
+        os.environ["HOME"] = folder
+    return Home(default_root())
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="demo.py", description="tgsweep on a made-up account")
     parser.add_argument("lang", choices=["en", "ru"])
     lang = parser.parse_args(argv).lang
     with tempfile.TemporaryDirectory(prefix="tgsweep-demo-", dir="/tmp" if os.path.isdir("/tmp") else None) as tmp:
-        os.environ[HOME_ENV] = tmp
+        home = home_in(tmp)
         os.environ[API_ID_ENV] = API_ID
         os.environ[API_HASH_ENV] = API_HASH
         i18n.set_lang(lang)
-        home = Home(default_root())
         client = build_world(lang, datetime.now(timezone.utc))
         cli.sweep = paced_sweep
         ui = cli.terminal_ui(home)
