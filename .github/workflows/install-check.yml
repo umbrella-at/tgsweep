@@ -69,6 +69,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # The runner image has ~/.local/bin on the PATH already, a newcomer's computer does not. With it
+          # there the installer leaves the PATH alone and writes no ~/.local/bin/env for step 3.
+          PATH=$(printf '%s' "$PATH" | tr ':' '\n' | grep -vxF "$HOME/.local/bin" | paste -sd: -)
           curl -LsSf https://astral.sh/uv/install.sh | sh
           source $HOME/.local/bin/env
           test "$(command -v uv)" = "$HOME/.local/bin/uv"

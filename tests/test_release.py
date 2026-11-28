@@ -156,6 +156,10 @@ def test_the_install_check_pastes_the_site_commands():
         for command in commands:
             assert command in site, command
         assert runs[0].count(commands[0]) == 1  # the installer, once
+        if system == "other":
+            # The runner has ~/.local/bin on the PATH, a newcomer does not: without it the installer writes env.
+            strip = 'grep -vxF "$HOME/.local/bin"'
+            assert strip in runs[0] and runs[0].index(strip) < runs[0].index(commands[0])
         assert all(commands[1] in run for run in runs)  # uv on the PATH in every step
         install = runs[0]
         assert 'uv tool install --refresh-package tgsweep "tgsweep==' in install
