@@ -1,6 +1,7 @@
 name: release
 
 # A tag vX.Y.Z publishes that version to PyPI and makes a GitHub Release from its CHANGELOG.md section.
+# Once published, install-check.yml installs it from PyPI on Windows, macOS and Linux.
 # PyPI trusts this file by name (release.yml) and the environment pypi: renaming either stops publishing
 # until the trusted publisher on PyPI is changed to match. The publish job waits for approval in pypi.
 
@@ -73,6 +74,15 @@ jobs:
           name: dist
           path: dist/
       - uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086  # v1.14.3
+
+  install-check:
+    # The published version installs from PyPI the way the site says, on Windows, macOS and Linux.
+    needs: publish
+    permissions:
+      contents: read
+    uses: $/.github/workflows/install-check.yml  # this repository, at the commit of the release
+    with:
+      version: ${{ github.ref_name }}
 
   github-release:
     needs: publish

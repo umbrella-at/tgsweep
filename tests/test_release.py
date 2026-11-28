@@ -6,6 +6,7 @@ not values read from the workflow itself.
 
 from __future__ import annotations
 
+import html
 import importlib.util
 import re
 import shutil
@@ -19,6 +20,7 @@ import yaml
 REPO = Path(__file__).resolve().parent.parent
 WORKFLOWS = REPO / ".github" / "workflows"
 RELEASE = WORKFLOWS / "release.yml"
+INSTALL_CHECK = WORKFLOWS / "install-check.yml"
 SCRIPT = REPO / "scripts" / "release.py"
 PUBLISH_ACTION = "pypa/gh-action-pypi-publish"
 
@@ -35,7 +37,7 @@ def workflow(path: Path = RELEASE) -> dict:
 
 
 def steps_using(job: dict, action: str) -> list[dict]:
-    return [step for step in job["steps"] if step.get("uses", "").startswith(action + "@")]
+    return [step for step in job.get("steps", []) if step.get("uses", "").startswith(action + "@")]
 
 
 # --- release.yml ----------------------------------------------------------------
@@ -67,6 +69,7 @@ def test_each_job_gets_only_the_permissions_it_needs():
         "test": {"contents": "read"},
         "build": {"contents": "read"},
         "publish": {"id-token": "write"},
+        "install-check": {"contents": "read"},
         "github-release": {"contents": "write"},
     }
 
@@ -74,7 +77,10 @@ def test_each_job_gets_only_the_permissions_it_needs():
 def test_publishing_waits_for_the_tests_and_the_build():
     jobs = workflow()["jobs"]
     chain = {name: job.get("needs") for name, job in jobs.items()}
-    assert chain == {"check": None, "test": "check", "build": "test", "publish": "build", "github-release": "publish"}
+    assert chain == {
+        "check": None, "test": "check", "build": "test", "publish": "build",
+        "install-check": "publish", "github-release": "publish",
+    }
 
 
 def test_the_build_is_checked_before_it_is_handed_on():
@@ -89,17 +95,80 @@ def test_the_build_is_checked_before_it_is_handed_on():
 @pytest.mark.parametrize("path", sorted(WORKFLOWS.glob("*.yml")), ids=lambda p: p.name)
 def test_actions_are_pinned_by_commit_with_the_version_in_a_comment(path):
     uses = re.findall(r"^\s*(?:- )?uses: (\S+)(.*)$", path.read_text(encoding="utf-8"), flags=re.M)
-    assert uses
     for ref, comment in uses:
+        if ref.startswith("$/"):  # this repository at the same commit (GitHub's self-repository syntax)
+            assert (REPO / ref[2:]).is_file(), ref
+            continue
         assert re.fullmatch(r"[\w.-]+/[\w.-]+@[0-9a-f]{40}", ref), ref
         assert re.fullmatch(r"\s+# v\d+(\.\d+)*", comment), (ref, comment)
 
 
-def test_no_template_expansion_inside_shell_commands():
-    # The tag name goes in through $GITHUB_REF_NAME, never pasted into the script by ${{ }}.
-    for job in workflow()["jobs"].values():
-        for step in job["steps"]:
+@pytest.mark.parametrize("path", [RELEASE, INSTALL_CHECK], ids=lambda p: p.name)
+def test_no_template_expansion_inside_shell_commands(path):
+    # The tag name and the version go in through the environment, never pasted into the script by ${{ }}.
+    for job in workflow(path)["jobs"].values():
+        for step in job.get("steps", []):
             assert "${{" not in step.get("run", ""), step
+
+
+# --- install-check.yml ----------------------------------------------------------
+
+# The commands of the site's steps 2 and 3, as a newcomer pastes them.
+SITE_COMMANDS = {
+    "Windows": ['powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"',
+                '$env:Path = "$HOME\\.local\\bin;$env:Path"'],
+    "other": ["curl -LsSf https://astral.sh/uv/install.sh | sh", "source $HOME/.local/bin/env"],
+}
+
+
+def install_steps() -> list[dict]:
+    return workflow(INSTALL_CHECK)["jobs"]["install"]["steps"]
+
+
+def test_the_install_check_runs_by_hand_and_after_a_release():
+    flow = workflow(INSTALL_CHECK)
+    on = flow[True]
+    assert set(on) == {"workflow_dispatch", "workflow_call"}
+    for trigger in on.values():
+        assert trigger["inputs"]["version"]["default"] == ""  # empty: the newest on PyPI
+    assert flow["permissions"] == {"contents": "read"}
+    assert [name for name, job in flow["jobs"].items() if "permissions" in job] == []
+    call = workflow()["jobs"]["install-check"]
+    assert call["uses"] == "$/.github/workflows/install-check.yml"
+    assert call["with"] == {"version": "${{ github.ref_name }}"}
+
+
+def test_the_install_check_starts_from_a_bare_runner():
+    # No action prepares the runner: uv comes from its installer, Python from uv.
+    assert "uses:" not in INSTALL_CHECK.read_text(encoding="utf-8")
+    install = workflow(INSTALL_CHECK)["jobs"]["install"]
+    assert install["strategy"] == {"fail-fast": False,
+                                   "matrix": {"os": ["windows-latest", "macos-latest", "ubuntu-latest"]}}
+    assert install["env"]["UV_MANAGED_PYTHON"] == "1"
+
+
+def test_the_install_check_pastes_the_site_commands():
+    page = (REPO / "site" / "index.html").read_text(encoding="utf-8")
+    site = [html.unescape(re.sub(r"<[^>]+>", "", c)) for c in re.findall(r"<code>(.*?)</code>", page)]
+    for system, commands in SITE_COMMANDS.items():
+        runs = [s["run"] for s in install_steps() if (s["if"] == "runner.os == 'Windows'") == (system == "Windows")]
+        assert len(runs) == (3 if system == "Windows" else 2)
+        for command in commands:
+            assert command in site, command
+        assert runs[0].count(commands[0]) == 1  # the installer, once
+        assert all(commands[1] in run for run in runs)  # uv on the PATH in every step
+        install = runs[0]
+        assert 'uv tool install --refresh-package tgsweep "tgsweep==' in install
+        assert "ATTEMPTS" in install and ("sleep 30" in install or "Start-Sleep -Seconds 30" in install)
+        for run in runs[1:]:
+            for command in ("tgsweep --version", "tgsweep --help", "tgsweep --lang ru --help", "uv python dir"):
+                assert command in run, (system, command)
+
+
+def test_windows_powershell_51_runs_the_same_check():
+    steps = [s for s in install_steps() if s["if"] == "runner.os == 'Windows'"]
+    assert [s["shell"] for s in steps] == ["pwsh", "pwsh", "powershell"]
+    assert steps[2]["run"] == steps[1]["run"]
 
 
 # --- scripts/release.py ---------------------------------------------------------

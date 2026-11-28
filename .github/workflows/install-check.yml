@@ -1,0 +1,186 @@
+name: install-check
+
+# Installs tgsweep from PyPI the way the site tells a newcomer to: uv from its own installer, uv on the
+# PATH with the command of step 3, then uv tool install. On a clean Windows, macOS and Linux runner,
+# with a Python that uv downloads itself, as on a computer that never had one. The program only prints
+# its version and help: it never signs in or reaches Telegram.
+#
+# Runs by hand (Actions, install-check, Run workflow; an empty version means the newest on PyPI) and
+# from release.yml once a release is published.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version on PyPI, for example 0.3.1 (empty for the newest)
+        type: string
+        required: false
+        default: ""
+  workflow_call:
+    inputs:
+      version:
+        description: Version on PyPI or its tag (v0.3.1)
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.pick.outputs.version }}
+    steps:
+      - name: the version to install
+        id: pick
+        env:
+          ASKED: ${{ inputs.version }}
+        run: |
+          version="${ASKED#v}"
+          if [ -z "$version" ]; then
+            version=$(curl -fsSL https://pypi.org/pypi/tgsweep/json | jq -r .info.version)
+          fi
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([a-z0-9.]*)$'; then
+            echo "::error::not a version: $version"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  install:
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      # The runners come with Python; a newcomer's computer does not. uv downloads its own instead.
+      UV_MANAGED_PYTHON: "1"
+      ATTEMPTS: "10"  # a new release reaches every PyPI mirror within minutes, not at once
+    steps:
+      # --- macOS and Linux -------------------------------------------------------------------------
+      - name: install uv and tgsweep as the site says
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          source $HOME/.local/bin/env
+          test "$(command -v uv)" = "$HOME/.local/bin/uv"
+          uv --version
+          for attempt in $(seq "$ATTEMPTS"); do
+            if uv tool install --refresh-package tgsweep "tgsweep==$VERSION"; then break; fi
+            if [ "$attempt" = "$ATTEMPTS" ]; then
+              echo "::error::tgsweep==$VERSION did not install in $ATTEMPTS attempts"
+              exit 1
+            fi
+            sleep 30
+          done
+          test "$(command -v tgsweep)" = "$HOME/.local/bin/tgsweep"
+
+      - name: tgsweep starts
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          source $HOME/.local/bin/env
+          shown=$(tgsweep --version)
+          echo "$shown"
+          test "$shown" = "tgsweep $VERSION"
+          tgsweep --help
+          tgsweep --lang ru --help | tee help-ru.txt
+          perl -CSD -ne '$found = 1 if /\p{Cyrillic}/; END { exit($found ? 0 : 1) }' help-ru.txt
+          # The Python is uv's own download, not the runner's.
+          uv tool list --show-python
+          python_dir=$(uv python dir)
+          home=$(sed -n 's/^home = //p' "$(uv tool dir)/tgsweep/pyvenv.cfg")
+          echo "tgsweep runs on $home"
+          case "$home" in "$python_dir"/*) ;; *) echo "::error::not a Python of uv: $home"; exit 1 ;; esac
+
+      # --- Windows: PowerShell 7, then the same in Windows PowerShell 5.1 ---------------------------
+      # Each native command is checked by its exit code: PowerShell itself only looks at the last one.
+      - name: install uv and tgsweep as the site says
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+          if ($LASTEXITCODE -ne 0) { throw "the uv installer exited with $LASTEXITCODE" }
+          $env:Path = "$HOME\.local\bin;$env:Path"
+          $uv = (Get-Command uv).Source
+          if ($uv -ne "$HOME\.local\bin\uv.exe") { throw "uv found at $uv" }
+          uv --version
+          $installed = $false
+          foreach ($attempt in 1..[int]$env:ATTEMPTS) {
+            uv tool install --refresh-package tgsweep "tgsweep==$env:VERSION"
+            if ($LASTEXITCODE -eq 0) { $installed = $true; break }
+            if ($attempt -lt [int]$env:ATTEMPTS) { Start-Sleep -Seconds 30 }
+          }
+          if (-not $installed) {
+            Write-Output "::error::tgsweep==$env:VERSION did not install in $env:ATTEMPTS attempts"
+            exit 1
+          }
+          $tgsweep = (Get-Command tgsweep).Source
+          if ($tgsweep -ne "$HOME\.local\bin\tgsweep.exe") { throw "tgsweep found at $tgsweep" }
+
+      - name: tgsweep starts in PowerShell 7
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $PSVersionTable.PSVersion.ToString()
+          $env:Path = "$HOME\.local\bin;$env:Path"
+          # The help is read back as UTF-8, the way Python writes it into a pipe.
+          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+          $shown = tgsweep --version
+          if ($LASTEXITCODE -ne 0) { throw "tgsweep --version exited with $LASTEXITCODE" }
+          Write-Output $shown
+          if ($shown -ne "tgsweep $env:VERSION") { throw "expected tgsweep $env:VERSION" }
+          tgsweep --help
+          if ($LASTEXITCODE -ne 0) { throw "tgsweep --help exited with $LASTEXITCODE" }
+          $ru = (tgsweep --lang ru --help) -join "`n"
+          if ($LASTEXITCODE -ne 0) { throw "tgsweep --lang ru --help exited with $LASTEXITCODE" }
+          Write-Output $ru
+          if ($ru -notmatch '\p{IsCyrillic}') { throw "no Cyrillic in the Russian help" }
+          # The Python is uv's own download, not the runner's.
+          uv tool list --show-python
+          $pythonDir = uv python dir
+          $cfg = Join-Path (uv tool dir) "tgsweep\pyvenv.cfg"
+          $pyHome = (Select-String -Path $cfg -Pattern '^home = (.*)$').Matches[0].Groups[1].Value
+          Write-Output "tgsweep runs on $pyHome"
+          if (-not $pyHome.StartsWith($pythonDir, [StringComparison]::OrdinalIgnoreCase)) { throw "not a Python of uv" }
+          exit 0
+
+      - name: tgsweep starts in Windows PowerShell 5.1
+        if: runner.os == 'Windows'
+        shell: powershell
+        # The same text as the PowerShell 7 step above (tests/test_release.py keeps them equal).
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $PSVersionTable.PSVersion.ToString()
+          $env:Path = "$HOME\.local\bin;$env:Path"
+          # The help is read back as UTF-8, the way Python writes it into a pipe.
+          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+          $shown = tgsweep --version
+          if ($LASTEXITCODE -ne 0) { throw "tgsweep --version exited with $LASTEXITCODE" }
+          Write-Output $shown
+          if ($shown -ne "tgsweep $env:VERSION") { throw "expected tgsweep $env:VERSION" }
+          tgsweep --help
+          if ($LASTEXITCODE -ne 0) { throw "tgsweep --help exited with $LASTEXITCODE" }
+          $ru = (tgsweep --lang ru --help) -join "`n"
+          if ($LASTEXITCODE -ne 0) { throw "tgsweep --lang ru --help exited with $LASTEXITCODE" }
+          Write-Output $ru
+          if ($ru -notmatch '\p{IsCyrillic}') { throw "no Cyrillic in the Russian help" }
+          # The Python is uv's own download, not the runner's.
+          uv tool list --show-python
+          $pythonDir = uv python dir
+          $cfg = Join-Path (uv tool dir) "tgsweep\pyvenv.cfg"
+          $pyHome = (Select-String -Path $cfg -Pattern '^home = (.*)$').Matches[0].Groups[1].Value
+          Write-Output "tgsweep runs on $pyHome"
+          if (-not $pyHome.StartsWith($pythonDir, [StringComparison]::OrdinalIgnoreCase)) { throw "not a Python of uv" }
+          exit 0
